@@ -177,6 +177,9 @@ static void cec_usage(void)
     printf("       cec on                   TV on and switched to our port\n");
     printf("       cec off                  TV standby\n");
     printf("       cec tv status            ask the TV: on, standby, turning on/off\n");
+    printf("       cec vol up|down [n]      volume keys, n presses (default 1)\n");
+    printf("       cec vol mute             mute toggle\n");
+    printf("       cec vol status           audio system volume, if there is one\n");
     printf("       cec tol <std|ext>        rx timing tolerance\n");
     printf("       cec reset                re-init the peripheral\n");
     printf("       cec dump                 registers and isr counters\n");
@@ -248,6 +251,49 @@ static void cmd_cec(const char *args)
         }
         if (!ok) {
             printf("busy, or no own address (cec addr <n>)\n");
+        }
+        return;
+    }
+
+    if (shell_match_word(&cursor, "vol")) {
+        int ok;
+        int up = 0;
+        int key = 0;
+        uint8_t n = 1;
+
+        if (shell_match_word(&cursor, "status") && *cursor == '\0') {
+            ok = cec_audio_status();
+        } else if (shell_match_word(&cursor, "mute") && *cursor == '\0') {
+            ok = cec_volume_mute();
+        } else {
+            if (shell_match_word(&cursor, "up")) {
+                key = 1;
+                up = 1;
+            } else if (shell_match_word(&cursor, "down")) {
+                key = 1;
+            }
+            if (!key) {
+                cec_usage();
+                return;
+            }
+            if (*cursor != '\0') {
+                n = 0;
+                while (*cursor >= '0' && *cursor <= '9' && n < 25U) {
+                    n = (uint8_t)(n * 10U + (uint8_t)(*cursor - '0'));
+                    cursor++;
+                }
+                if (*cursor != '\0' || n == 0U) {
+                    cec_usage();
+                    return;
+                }
+            }
+            ok = up ? cec_volume_up(n) : cec_volume_down(n);
+        }
+        if (!ok) {
+            printf("busy, or no own address (cec addr <n>)\n");
+        } else {
+            printf("volume -> %s\n",
+                   cec_system_audio_mode() ? "audio system (5)" : "tv (0)");
         }
         return;
     }

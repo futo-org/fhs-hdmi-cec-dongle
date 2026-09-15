@@ -152,6 +152,21 @@ static uint8_t pwr_retry_due;
 static uint32_t pwr_retry_at_ms;
 
 static uint8_t tv_query_open;   /* <Give Device Power Status> sent, answer due */
+
+/* Volume, CEC 1.4 §13.12 and §13.15. Keys go as <User Control Pressed>
+   then <User Control Released>. While an Audio System has System Audio Mode
+   on (its <Set System Audio Mode> broadcasts) it owns the volume and the
+   keys go to it, otherwise to the TV. */
+#define CEC_ADDR_TV     0x0U
+#define CEC_ADDR_AUDIO  0x5U
+#define UI_VOLUME_UP    0x41U
+#define UI_VOLUME_DOWN  0x42U
+#define UI_MUTE         0x43U
+
+static uint8_t sys_audio_mode;  /* soundbar has the volume */
+static uint8_t vol_ui;          /* key in progress */
+static uint8_t vol_left;        /* presses still to send */
+static uint8_t vol_stage;       /* 0 idle, 1 press in flight, 2 release in flight */
 static uint32_t tv_query_deadline_ms;
 
 #define TV_QUERY_TIMEOUT_MS 2000U
@@ -447,7 +462,11 @@ static const struct {
     { 0x0D, "Text View On" },
     { 0x32, "Set Menu Language" },
     { 0x36, "Standby" },
+    { 0x44, "User Control Pressed" },
+    { 0x45, "User Control Released" },
     { 0x46, "Give OSD Name" },
+    { 0x71, "Give Audio Status" },
+    { 0x7A, "Report Audio Status" },
     { 0x70, "System Audio Mode Request" },
     { 0x72, "Set System Audio Mode" },
     { 0x7D, "Give System Audio Mode Status" },
@@ -593,6 +612,40 @@ int cec_tv_query_power(void)
     tv_query_open = 1;
     tv_query_deadline_ms = HAL_GetTick() + TV_QUERY_TIMEOUT_MS;
     return 1;
+}
+
+static uint8_t volume_target(void)
+{
+    return sys_audio_mode ? CEC_ADDR_AUDIO : CEC_ADDR_TV;
+}
+
+int cec_volume(uint8_t ui, uint8_t count)
+{
+    if (own_addr == CEC_ADDR_NONE || vol_stage != 0U || count == 0U) {
+        return 0;
+    }
+    vol_ui = ui;
+    vol_left = count;
+    vol_stage = 0;                  /* cec_task sends the first press */
+    return 1;
+}
+
+int cec_volume_up(uint8_t n)   { return cec_volume(UI_VOLUME_UP, n); }
+int cec_volume_down(uint8_t n) { return cec_volume(UI_VOLUME_DOWN, n); }
+int cec_volume_mute(void)      { return cec_volume(UI_MUTE, 1); }
+
+/* <Give Audio Status>: only an Audio System answers it, with volume and
+   mute in one byte. The TV has no such report. */
+int cec_audio_status(void)
+{
+    uint8_t q = 0x71;
+
+    return cec_send(volume_target(), &q, 1);
+}
+
+int cec_system_audio_mode(void)
+{
+    return sys_audio_mode;
 }
 
 static const char *power_state_name(uint8_t st)
@@ -758,6 +811,16 @@ void cec_task(void)
             printf("[%8lu] tx ok\n", (unsigned long)HAL_GetTick());
         }
 
+        if (vol_stage == 1U) {      /* press acknowledged */
+            vol_stage = 2;
+        } else if (vol_stage == 2U) {   /* release acknowledged */
+            vol_left--;
+            vol_stage = 0;          /* next press, if any are left */
+            if (vol_left == 0U) {
+                printf("         volume key done\n");
+            }
+        }
+
         if (pwr_in_flight) {        /* TV acknowledged the power command */
             pwr_in_flight = 0;
             if (pwr_attempts > 1U) {
@@ -797,6 +860,11 @@ void cec_task(void)
         if (tv_query_open && bits != 0U) {
             tv_query_open = 0;      /* the failure line says why */
         }
+        if (vol_stage != 0U && bits != 0U) {
+            vol_stage = 0;
+            vol_left = 0;
+            printf("volume key to %x failed: ", volume_target());
+        }
 
         if (pwr_in_flight && (bits & CEC_FLAG_TXACKE) != 0U &&
             pwr_attempts < PWR_ATTEMPTS_MAX) {
@@ -832,6 +900,23 @@ void cec_task(void)
             tx_retry_left = 0;
         }
         tx_is_reply = 0;
+    }
+
+    if (vol_left > 0U && !tx_pending) {
+        uint8_t msg[2];
+
+        if (vol_stage == 0U) {
+            msg[0] = 0x44;          /* User Control Pressed */
+            msg[1] = vol_ui;
+            if (cec_send(volume_target(), msg, 2)) {
+                vol_stage = 1;
+            }
+        } else if (vol_stage == 2U) {
+            msg[0] = 0x45;          /* User Control Released */
+            if (cec_send(volume_target(), msg, 1)) {
+                /* stays 2 until acknowledged, then counts down above */
+            }
+        }
     }
 
     if (tv_query_open &&
@@ -891,6 +976,14 @@ void cec_task(void)
         if (f->len >= 3U && (f->data[0] >> 4) == 0x0U && f->data[1] == 0x90U) {
             printf("         tv is %s\n", power_state_name(f->data[2]));
             tv_query_open = 0;
+        }
+        if (f->len >= 3U && (f->data[1] == 0x72U || f->data[1] == 0x7EU)) {
+            /* Set System Audio Mode / System Audio Mode Status */
+            sys_audio_mode = f->data[2] ? 1U : 0U;
+        }
+        if (f->len >= 3U && f->data[1] == 0x7AU) {
+            printf("         audio: volume %u%s\n", f->data[2] & 0x7FU,
+                   (f->data[2] & 0x80U) ? ", muted" : "");
         }
         respond(f);
         rx_tail = (uint8_t)((rx_tail + 1U) % RX_QUEUE);

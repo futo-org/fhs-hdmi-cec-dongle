@@ -347,6 +347,18 @@ cec off                 <Standby>
 cec tv status           <Give Device Power Status> -> "tv is on|standby|turning on|turning off"
 ```
 
+```
+cec vol up [n]          Volume Up key, n times (User Control Pressed 44 41 / Released 45)
+cec vol down [n]        Volume Down
+cec vol mute            Mute toggle
+cec vol status          Give Audio Status -> "audio: volume 34, muted"
+```
+
+Volume keys go to whoever owns the volume. When the soundbar broadcasts
+`<Set System Audio Mode> on` (`5->f 72 01`, it does after every wake) the keys go to it at
+address 5 and `cec vol status` gets a real answer; otherwise they go to the TV, which does
+not report a volume level. The command echoes which one it picked.
+
 `cec tv on` and `cec tv off` are the same as `cec on` and `cec off`. Every
 `<Report Power Status>` from the TV is decoded the same way, asked for or not, so the
 `tv is turning off` line shows up on its own after `cec off`.
@@ -397,6 +409,7 @@ cec addr <0-f|none|auto>  own logical address; allocated at boot, this overrides
 cec on                    TV on and switched to our port (One Touch Play)
 cec off                   TV standby
 cec tv status|on|off      power state query, or the two above
+cec vol up|down [n]       volume keys; mute; status (audio system only)
 cec send <dest> [hex...]  one frame. No payload = a poll
 cec auto <on|off>         answer the TV's interrogation (default on)
 cec listen <own|all>      print only frames to us and broadcasts (default), or every frame

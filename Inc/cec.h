@@ -83,4 +83,16 @@ int cec_is_active_source(void);
    "standby", "turning on" or "turning off". Returns 0 if busy. */
 int cec_tv_query_power(void);
 
+/* Volume keys, n presses each with its release. They go to the Audio System
+   while it has System Audio Mode on, otherwise to the TV. Returns 0 if a
+   key sequence is already running or there is no own address. */
+int cec_volume_up(uint8_t n);
+int cec_volume_down(uint8_t n);
+int cec_volume_mute(void);
+
+/* <Give Audio Status> to whoever has the volume; prints "audio: volume N".
+   Only an Audio System answers it. */
+int cec_audio_status(void);
+int cec_system_audio_mode(void);
+
 #endif
