@@ -2,8 +2,8 @@
 
 HDMI-CEC on a NUCLEO-F072RB (STM32F072RBT6, Cortex-M0). STM32Cube HAL, vendored in `Drivers/`.
 
-Current state: `Src/main.c` blinks the user LED (PA5) at 1 Hz. Clock runs at 48 MHz off the
-PLL. CEC not started yet.
+Current state: 48 MHz off the PLL, LED on PA5, and a command shell on the ST-LINK VCP.
+CEC not started yet.
 
 ## Quick start
 
@@ -27,7 +27,7 @@ Probe enumerates (`0483:374b`) but has no udev rule → `DEV_CONNECT_ERR`.
 
 | Path | What |
 |---|---|
-| `Src/`, `Inc/` | Firmware. `Inc/stm32f0xx_hal_conf.h` selects which HAL modules build |
+| `Src/`, `Inc/` | Firmware: `main.c` (shell + LED), `uart.c` (USART2 + printf glue). `Inc/stm32f0xx_hal_conf.h` selects which HAL modules build |
 | `Drivers/` | Vendored CMSIS Core + CMSIS device F0 + STM32F0xx HAL driver |
 | `cmake/` | Extension-managed build config. Only `files.cmake` is yours to edit |
 | `tools/cube-env.sh` | Puts the STM32Cube bundle toolchain on PATH and execs a command |
@@ -35,6 +35,28 @@ Probe enumerates (`0483:374b`) but has no udev rule → `DEV_CONNECT_ERR`.
 | `mise.toml` | build / load / connect / size / erase / gdbserver / … tasks |
 | `docs/` | ST PDFs + `.txt` pdftotext dumps (grep these) |
 | `ref/` | Reference CEC code, not compiled |
+
+## Serial console
+
+USART2 on PA2/PA3 → ST-LINK VCP → `/dev/ttyACM0`, **115200 8N1**. `printf` goes out here
+(`syscall.c` already routes `_write`/`_read` to `__io_putchar`/`__io_getchar`, which
+`Src/uart.c` defines), and typed lines come back through `uart_take_line()`.
+
+    mise run monitor          # minicom at 115200
+    # or, scripted:
+    stty -F /dev/ttyACM0 115200 raw -echo -hupcl
+    cat /dev/ttyACM0 &
+    printf 'status\r' > /dev/ttyACM0
+
+Commands: `help`, `led on|off|blink`, `status`, `reset`. Add your own in
+`handle_command()` in `Src/main.c`.
+
+The RX ISR only pushes bytes into a ring buffer — echo and line editing happen in
+`uart_take_line()` from the main loop. Echoing inside the ISR blocks for a full character
+time at 115200 and drops the next incoming byte (`status` arrives as `statu`).
+
+The terminal has no local echo (`raw -echo`); the firmware echoes. `/dev/ttyACM0` is
+world-readable thanks to the udev rule above, so dialout group membership is not needed.
 
 ## HAL
 
