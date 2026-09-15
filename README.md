@@ -2,8 +2,12 @@
 
 HDMI-CEC on a NUCLEO-F072RB (STM32F072RBT6, Cortex-M0). STM32Cube HAL, vendored in `Drivers/`.
 
-Current state: 48 MHz off the PLL, LED on PA5, and a command shell on the ST-LINK VCP.
-CEC not started yet.
+Current state: 48 MHz off the PLL, LED on PA5, a command shell on the ST-LINK VCP, and
+**working HDMI-CEC** — send, receive, and enough of a responder that a TV registers the
+board as a device and obeys it. Verified against an LG 50QNED75BA.
+
+Wiring and the command sequence are below under [HDMI-CEC bench](#hdmi-cec-bench).
+`docs/cec-bringup-plan.md` has the staged plan this was built from.
 
 ## Quick start
 
@@ -29,12 +33,12 @@ Probe enumerates (`0483:374b`) but has no udev rule → `DEV_CONNECT_ERR`.
 
 | Path | What |
 |---|---|
-| `Src/`, `Inc/` | Firmware, one concern per module: `main.c` wiring, `board.h` pin map, `system_clock.c`, `led.c`, `uart.c` (bytes), `console.c` (line editing), `shell.c`, `stm32f0xx_it.c`. `Inc/stm32f0xx_hal_conf.h` selects which HAL modules build |
+| `Src/`, `Inc/` | Firmware, one concern per module: `main.c` wiring, `board.h` pin map, `system_clock.c`, `led.c`, `uart.c` (bytes), `console.c` (line editing), `shell.c`, `cec.c` (peripheral + protocol), `cec_diag.c` (line instrumentation), `stm32f0xx_it.c`. `Inc/stm32f0xx_hal_conf.h` selects which HAL modules build |
 | `Drivers/` | Vendored CMSIS Core + CMSIS device F0 + STM32F0xx HAL driver |
 | `cmake/` | Generated build config. Only `files.cmake` is yours to edit |
 | `tools/49-stlink.rules` | udev rules for the probe |
 | `mise.toml` | toolchain versions **and** tasks: build / load / connect / size / erase / gdbserver / … |
-| `docs/` | ST PDFs + `.txt` pdftotext dumps (grep these) |
+| `docs/` | ST PDFs + `.txt` pdftotext dumps (grep these), plus `cec-bringup-plan.md` |
 | `ref/` | Reference CEC code, not compiled |
 
 ## Serial console
@@ -51,8 +55,8 @@ USART2 on PA2/PA3 → ST-LINK VCP → `/dev/ttyACM0`, **115200 8N1**. `printf` g
     sleep 3                   # the open toggles DTR/RTS; let the VCP settle
     printf 'status\r' >&3
 
-Commands: `help`, `led on|off|blink`, `status`, `reset`. Add your own as a row in the
-`commands[]` table in `Src/shell.c` plus one handler.
+Commands: `help`, `led on|off|blink`, `cec ...`, `diag ...`, `status`, `reset`. Add your own
+as a row in the `commands[]` table in `Src/shell.c` plus one handler.
 
 The RX ISR only pushes bytes into a ring buffer — echo and line editing happen in
 `Src/console.c` from the main loop. Echoing inside the ISR blocks for a full character
@@ -165,9 +169,235 @@ VS Code debug sessions first):
 | `docs/AN4066-hdmi-cec-network-stm32f0.pdf` | AN4066 "Developing an HDMI-CEC network using an STM32F0xx MCU" (32p) | whole doc: HW, protocol, sw stack |
 | `docs/ST-training-HDMI-CEC.pdf` | ST peripheral training slides on the CEC block | quick overview |
 | `docs/STSW-STM32134_cec_firmware.zip` | AN4066 companion firmware (StdPeriph V1.0.0) | unzipped to `ref/stsw-stm32134/` |
+| `docs/cec-bringup-plan.md` | Bring-up plan: bench, BOM, wiring, staged firmware | ours, follow it |
 
 Missing: UM1724 (Nucleo-64 board manual) — st.com was unreachable from this machine. Grab from
 <https://www.st.com/resource/en/user_manual/um1724-stm32-nucleo64-boards-mb1136-stmicroelectronics.pdf>
+
+## HDMI-CEC bench
+
+### What you need
+
+| Item | Note |
+|---|---|
+| HDMI type A breakout | pads for pins 13, 17, 18. A plug-only board is fine when the TV is the only other device |
+| HDMI cable to the TV | micro-to-A if you also want it to reach a Pi |
+| 22k or 27k resistor | the bus pull-up; the Nucleo has none |
+| 3 jumpers | CEC, GND, +5 V |
+
+### Wiring
+
+Three nets. That is the whole circuit.
+
+| Net | Connects |
+|---|---|
+| **CEC** | breakout pin 13 — R1 — NUCLEO **PB8** |
+| **3V3** | R1 other leg — NUCLEO **3V3** |
+| **GND** | breakout pin 17 — NUCLEO **GND** |
+| **+5V** | breakout pin 18 — NUCLEO **5V** |
+
+```
+   HDMI type A breakout                    NUCLEO-F072RB
+   +--------------------+
+   |   pin 13   CEC  o--+----------+-----------o PB8   (= Arduino D15 / SCL)
+   |                    |          |
+   |                    |         .-.
+   |                    |         | |  R1  22k
+   |                    |         '-'
+   |                    |          |
+   |                    |          '-----------o 3V3
+   |                    |
+   |   pin 17   GND  o--+----------------------o GND
+   |                    |
+   |   pin 18   +5V  o--+----------------------o 5V
+   |                    |
+   |   pin 19   HPD     |   not connected
+   +--------------------+
+             |
+             |  HDMI cable
+             v
+            TV
+```
+
+**Pin 18 is not optional.** It is the +5 V a source supplies to a sink, and it is how a TV
+knows something is plugged into that port. TVs gate CEC per port on it: without it the TV
+transmits to you and refuses to listen, which reads as a perfectly clean one-way link and
+wastes an afternoon. Symptom: you receive the TV's frames fine, every directed transmit
+comes back `tx no ack`, and the ack slot in `diag txtrace` is never pulled down.
+
+The 22k matters too. A floating CEC line is a megohm antenna that picks up mains hum, and
+`diag noise` reports thousands of edges a second at roughly 60 Hz structure.
+
+Keep jumpers short, under about 10 cm.
+
+### Bring it up
+
+Check the wiring before talking to anything:
+
+```
+diag noise
+```
+
+Want `0 edges, 100% high` on a quiet bus, or a few dozen edges with a `longest low` near
+3700 us if the TV is chatting. Thousands of edges means the line is floating.
+
+```
+diag line
+```
+
+Want `pull-up present` **and** `while driving: pin reads low`. The second line is the one
+that matters; it proves the board can assert the bus, not just listen to it.
+
+### Talk to the TV
+
+```
+cec addr 4              claim logical address 4 (Playback 1)
+cec send 0              poll the TV -> "tx ok" means it acknowledged
+```
+
+`tx ok` on that poll is the milestone: the TV pulled the ack bit down, so the link works
+both ways. Then wait a few seconds. The TV interrogates the new device and the board
+answers automatically:
+
+```
+rx 0->4 83  <Give Physical Address>    -> reply 84
+rx 0->4 46  <Give OSD Name>            -> reply 47
+rx 0->4 8c  <Give Device Vendor ID>    -> reply 87
+rx 0->4 8f  <Give Device Power Status> -> reply 90
+```
+
+**Let that finish before sending commands.** A device that has not reported its physical
+address is not in the TV's device list, and the TV will acknowledge your commands and then
+ignore them. That is Stage 5 in the plan and it is why `cec auto off` is a debugging aid,
+not something to leave off.
+
+Now it obeys:
+
+```
+cec send 0 36           turn the TV off   <Standby>
+cec send 0 04           turn the TV on    <Image View On>
+cec send f 36           standby everything on the bus
+```
+
+**Wait about 10 seconds after a power command before sending anything else.** A TV stops
+acknowledging directed messages while it is powering up or down, so anything sent during
+the transition comes back `tx no ack`. That is the TV being busy, not a fault, and retrying
+immediately does not help. The give-away that the command *did* land is the TV announcing
+its new state unprompted:
+
+```
+> cec send 0 04
+[  325960] tx ok
+[  326853] rx 0->f 90 00   <Report Power Status>    <- it woke
+> cec send 0 04
+[  329995] tx failed: tx no ack (0x1000)            <- 4 s later, mid-transition
+```
+
+This is the single most confusing behaviour on the bench, because a burst of commands makes
+a working link look broken. One command, then wait.
+
+Query it:
+
+```
+cec send 0 8f           <Give Device Power Status> -> 90 00 = on, 90 01 = standby
+cec send 0 9f           <Get CEC Version>          -> 9e 05 = CEC 1.4
+cec send 0 46           <Give OSD Name>            -> 47 + ASCII
+cec send 0 8c           <Give Device Vendor ID>    -> 87 + 3-byte OUI
+```
+
+A full session, from a cold board:
+
+```
+> cec addr 4
+addr 4
+> cec send 0
+[  15098] tx ok
+[  15453] rx 0->4 83  <Give Physical Address>
+         -> reply 84
+[  15592] tx ok
+[  15681] rx 0->4 46  <Give OSD Name>
+         -> reply 47
+[  15964] tx ok
+> cec send 0 8f
+[  71741] tx ok
+[  71853] rx 0->4 90 00  <Report Power Status>
+> cec send 0 36
+[  74676] tx ok
+> cec send 0 8f
+[  78910] tx ok
+[  79022] rx 0->4 90 01  <Report Power Status>
+```
+
+### Commands
+
+```
+cec addr <0-f|none>       own logical address; transmit needs one
+cec send <dest> [hex...]  one frame. No payload = a poll
+cec auto <on|off>         answer the TV's interrogation (default on)
+cec listen <own|all>      print only frames to us and broadcasts (default), or every frame
+cec listen reduced        hardware address filter; wedges the receiver, see below
+cec tol <std|ext>         rx timing tolerance
+cec reset                 re-init the peripheral
+cec dump                  registers, transmit/receive state, ISR counters and event log
+
+diag line                 pull-up and drive test
+diag noise                1 s activity summary
+diag trace                sample the line, print edges with CEC bit hints
+diag txtrace <d> [hex]    send and scope our own frame, including the ack slot
+diag hold                 drive low 5 s, so you can meter the far end
+```
+
+`diag txtrace` is the one that settles arguments. It samples the pin while the peripheral
+drives it, so you see your own bit timing against spec (start bit 3700 us, a 0 is 1500 us
+low, a 1 is 600 us low, bit period 2400 us) and whether anyone pulls the ack slot down:
+
+```
+  low    3691 us  start bit
+  low    1494 us  data 0        header 0x40 = initiator 4, destination 0
+  low     610 us  data 1
+  ...
+  low     610 us  data 1        EOM
+  low    1513 us  data 0        <- ack: TV holding the line past our 610 us
+```
+
+### Known rough edges
+
+- **The bus has a third device on it.** The TV's soundbar (Samsung HW-Q600F, logical
+  address 5, Audio System) talks CEC too. The TV interrogates it on every power transition
+  and polls it every second while it boots and every 14 s while it sleeps; a sleeping
+  soundbar does not answer. `cec listen all` shows the whole conversation. Two hardware
+  behaviours came out of that traffic, both fixed in `Src/cec.c`:
+  - **Reduced listening mode goes deaf.** With the hardware address filter on (LSTN=0),
+    the receiver stopped delivering anything within seconds of every TV power transition:
+    no flag, no error, registers all normal, TV still acknowledging our frames and
+    answering them, nothing arriving. Only a re-init brought it back. Full listening mode
+    (every frame received, filter in software) ran the same cycles indefinitely without
+    a fault, so that is now the default. Whatever the silicon does with a directed frame it
+    is meant to ignore, it does not do reliably. A watchdog covers the remaining unknowns:
+    if the TV acknowledges a question it must answer (`8f`, `8c`, `83`, `46`, `9f`, `91`) and
+    nothing at all arrives for 1.5 s, the peripheral is re-initialised and
+    `rx watchdog: acked query, no reply` is printed. `cec dump` counts them.
+  - **`rx overrun (0x4)` was never an overrun.** In reduced mode, a directed frame for
+    someone else that nobody acknowledges (the TV polling the sleeping soundbar) raises
+    RXOVR with no byte delivered and RXDR still holding our previous frame's last byte.
+    RM0091 defines RXOVR as "RXBR not yet cleared when a new byte is received", which never
+    happened: every overrun ever logged had RXBR clear, and the ISR event log proved the
+    handler was never late. In full listening mode the same event arrives as RXACKE, which
+    is documented. Both are now counted as `foreign nack` and not reported.
+- **The interrupt path no longer uses the HAL.** `HAL_CEC_IRQHandler` clears flags with
+  `ISR |= bit`, a read-modify-write that also acknowledges any flag raised between the read
+  and the write, and its RX cursor is only rewound at RXEND or on an error, so a frame the
+  hardware aborts (CECEN=0 does that) leaves it pointing past the buffer. `cec_irq_handler`
+  owns the transmit and receive state, clears with plain `ISR = bit` stores, and rescans
+  until nothing is pending. `HAL_CEC_Init` and `HAL_CEC_SetDeviceAddress` are still used for
+  configuration.
+- **The TV tramples the first reply after a wake.** It asks `83` and starts its next frame
+  without waiting, on top of our `84`, which shows as `tx rejected by a follower`. Auto
+  responses are retried once after 150 ms (`-> retry 84`).
+- The physical address is hardcoded to `1.0.0.0` in `Src/cec.c`. There is no EDID reader,
+  so it is declared rather than discovered. Change it if the cable moves to another port
+- Logical address allocation is not implemented; `cec addr` is manual
+
 
 ## Reference code (`ref/`, not compiled)
 
@@ -194,7 +424,9 @@ Missing: UM1724 (Nucleo-64 board manual) — st.com was unreachable from this ma
 ## Hardware needed (RM0091 §31.3.1)
 
 - CEC is a single bidirectional open-drain line → GPIO as **AF open-drain, no pull**
-- External **27 kΩ pull-up to 3.3 V** — not present on the Nucleo, you must add it
+- External **27 kΩ pull-up to 3.3 V** — not present on the Nucleo, you must add it.
+  22k works fine
+- **HDMI pin 18 (+5 V) must be driven.** Not optional, see the bench section below
 - Isolate the pin from the bus when the board is unpowered (series MOSFET, Figure 325)
-  so you don't drag the HDMI bus down
-- HDMI connector: CEC = pin 13, ground ref = pin 17 (DDC/CEC ground)
+  so you don't drag the HDMI bus down. Not fitted here; the board is always powered
+- HDMI connector: CEC = pin 13, ground ref = pin 17 (DDC/CEC ground), +5 V = pin 18

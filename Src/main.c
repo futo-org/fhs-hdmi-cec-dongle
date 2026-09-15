@@ -6,6 +6,7 @@
  */
 
 #include "main.h"
+#include "cec.h"
 #include "console.h"
 #include "led.h"
 #include "shell.h"
@@ -18,6 +19,7 @@ int main(void)
     system_clock_config();
     led_init();
     uart_init();
+    cec_init();
     shell_begin();
 
     for (;;) {
@@ -27,6 +29,7 @@ int main(void)
             shell_execute(line);
         }
         led_task();
+        cec_task();
     }
 }
 
