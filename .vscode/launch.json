@@ -1,0 +1,50 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug (ST-Link, Debug preset)",
+      "type": "stlinkgdbtarget",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "deviceName": "STM32F072RB",
+      "deviceCore": "Cortex-M0",
+      "svdPath": "${userHome}/.local/share/stm32cube/packs/STMicroelectronics/stm32f0xx_dfp/1.2.0/SVD/STM32F0x2.svd",
+      "program": "${workspaceFolder}/build/Debug/fhs-hdmi-controller.elf",
+      "imagesAndSymbols": [
+        {
+          "imageFileName": "${workspaceFolder}/build/Debug/fhs-hdmi-controller.elf"
+        }
+      ],
+      "runEntry": "main",
+      "serverInterface": "SWD",
+      "serverVerify": true,
+      "liveWatch": {
+        "enabled": true,
+        "samplesPerSecond": "4"
+      },
+      "preLaunchTask": "cmake: build Debug",
+      "automaticallyKillServer": true,
+      "serverShared": true
+    },
+    {
+      "name": "Attach (to running ST-Link gdbserver on :61234)",
+      "type": "stlinkgdbtarget",
+      "request": "attach",
+      "cwd": "${workspaceFolder}",
+      "deviceName": "STM32F072RB",
+      "deviceCore": "Cortex-M0",
+      "svdPath": "${userHome}/.local/share/stm32cube/packs/STMicroelectronics/stm32f0xx_dfp/1.2.0/SVD/STM32F0x2.svd",
+      "program": "${workspaceFolder}/build/Debug/fhs-hdmi-controller.elf",
+      "imagesAndSymbols": [
+        {
+          "imageFileName": "${workspaceFolder}/build/Debug/fhs-hdmi-controller.elf",
+          "imageOffset": "0",
+          "symbolsOffset": "0",
+          "symbolsOnly": true
+        }
+      ],
+      "serverHost": "localhost",
+      "serverPort": "61234"
+    }
+  ]
+}

@@ -28,14 +28,40 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/flags.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/components.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/files.cmake)
 
-# Add sources to executable/library
+# CMSIS device + the HAL modules enabled in Inc/stm32f0xx_hal_conf.h.
+# Enabling another module there means adding its .c here too.
+set(HAL_DIR ${CMAKE_CURRENT_SOURCE_DIR}/Drivers/STM32F0xx_HAL_Driver)
 target_sources(${PROJECT_NAME} PRIVATE
-  # User defined sources
+  ${CMAKE_CURRENT_SOURCE_DIR}/Drivers/CMSIS/Device/ST/STM32F0xx/Source/Templates/system_stm32f0xx.c
+  ${HAL_DIR}/Src/stm32f0xx_hal.c
+  ${HAL_DIR}/Src/stm32f0xx_hal_cortex.c
+  ${HAL_DIR}/Src/stm32f0xx_hal_rcc.c
+  ${HAL_DIR}/Src/stm32f0xx_hal_rcc_ex.c
+  ${HAL_DIR}/Src/stm32f0xx_hal_gpio.c
+  ${HAL_DIR}/Src/stm32f0xx_hal_exti.c
+  ${HAL_DIR}/Src/stm32f0xx_hal_pwr.c
+  ${HAL_DIR}/Src/stm32f0xx_hal_pwr_ex.c
+  ${HAL_DIR}/Src/stm32f0xx_hal_flash.c
+  ${HAL_DIR}/Src/stm32f0xx_hal_flash_ex.c
+  ${HAL_DIR}/Src/stm32f0xx_hal_dma.c
+  ${HAL_DIR}/Src/stm32f0xx_hal_cec.c
+  ${HAL_DIR}/Src/stm32f0xx_hal_uart.c
+  ${HAL_DIR}/Src/stm32f0xx_hal_uart_ex.c
 )
+
+# Vendor code, not ours to lint.
+set_source_files_properties(
+  ${CMAKE_CURRENT_SOURCE_DIR}/Drivers/CMSIS/Device/ST/STM32F0xx/Source/Templates/system_stm32f0xx.c
+  TARGET_DIRECTORY ${PROJECT_NAME} PROPERTIES COMPILE_OPTIONS "-w")
+file(GLOB HAL_SRCS ${HAL_DIR}/Src/*.c)
+set_source_files_properties(${HAL_SRCS}
+  TARGET_DIRECTORY ${PROJECT_NAME} PROPERTIES COMPILE_OPTIONS "-w")
 
 # Add include directories
 target_include_directories(${PROJECT_NAME} PRIVATE
-  # User defined include directories
+  ${CMAKE_CURRENT_SOURCE_DIR}/Drivers/CMSIS/Core/Include
+  ${CMAKE_CURRENT_SOURCE_DIR}/Drivers/CMSIS/Device/ST/STM32F0xx/Include
+  ${HAL_DIR}/Inc
 )
 
 # Compiler options
@@ -45,7 +71,8 @@ target_compile_options(${PROJECT_NAME} PRIVATE
 
 # Add additional defined symbols
 target_compile_definitions(${PROJECT_NAME} PRIVATE
-  # Add additional defined symbols here
+  STM32F072xB
+  USE_HAL_DRIVER
 )
 
 # Linker options

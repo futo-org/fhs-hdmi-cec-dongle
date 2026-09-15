@@ -1,0 +1,51 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "cmake: configure Debug",
+      "type": "shell",
+      "command": "./tools/cube-env.sh cmake --preset Debug",
+      "problemMatcher": []
+    },
+    {
+      "label": "cmake: configure Release",
+      "type": "shell",
+      "command": "./tools/cube-env.sh cmake --preset Release",
+      "problemMatcher": []
+    },
+    {
+      "label": "cmake: build Debug",
+      "type": "shell",
+      "command": "./tools/cube-env.sh cmake --build --preset Debug",
+      "dependsOn": "cmake: configure Debug",
+      "group": { "kind": "build", "isDefault": true },
+      "problemMatcher": ["$gcc"]
+    },
+    {
+      "label": "cmake: build Release",
+      "type": "shell",
+      "command": "./tools/cube-env.sh cmake --build --preset Release",
+      "dependsOn": "cmake: configure Release",
+      "problemMatcher": ["$gcc"]
+    },
+    {
+      "label": "flash Debug",
+      "type": "shell",
+      "command": "./tools/cube-env.sh STM32_Programmer_CLI -c port=SWD mode=UR -w build/Debug/fhs-hdmi-controller.elf -v -rst",
+      "dependsOn": "cmake: build Debug",
+      "problemMatcher": []
+    },
+    {
+      "label": "erase chip",
+      "type": "shell",
+      "command": "./tools/cube-env.sh STM32_Programmer_CLI -c port=SWD mode=UR -e all",
+      "problemMatcher": []
+    },
+    {
+      "label": "size",
+      "type": "shell",
+      "command": "./tools/cube-env.sh arm-none-eabi-size -Ax build/Debug/fhs-hdmi-controller.elf",
+      "problemMatcher": []
+    }
+  ]
+}

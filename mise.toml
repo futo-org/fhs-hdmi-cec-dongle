@@ -1,0 +1,54 @@
+# STM32 Nucleo-F072RB tasks.
+# Toolchain lives in the STM32Cube VS Code bundles, not on PATH.
+# tools/cube-env.sh resolves the newest bundle of each tool and execs the command.
+
+[env]
+PRESET = "{{ env.PRESET | default(value='Debug') }}"
+CUBE_BUNDLE_PATH = "{{env.HOME}}/.local/share/stm32cube/bundles"
+
+[tasks.configure]
+description = "CMake configure (PRESET, default Debug)"
+run = "./tools/cube-env.sh cmake --preset $PRESET"
+
+[tasks.build]
+description = "Build firmware"
+depends = ["configure"]
+run = "./tools/cube-env.sh cmake --build --preset $PRESET"
+
+[tasks.load]
+description = "Build, flash and reset the board"
+depends = ["build"]
+run = "./tools/cube-env.sh STM32_Programmer_CLI -c port=SWD mode=UR -w build/$PRESET/fhs-hdmi-controller.elf -v -rst"
+
+[tasks.connect]
+description = "Probe the target over SWD (read-only check)"
+run = "./tools/cube-env.sh STM32_Programmer_CLI -c port=SWD mode=UR"
+
+[tasks.erase]
+description = "Mass-erase the flash"
+run = "./tools/cube-env.sh STM32_Programmer_CLI -c port=SWD mode=UR -e all"
+
+[tasks.size]
+description = "Section sizes of the built ELF"
+depends = ["build"]
+run = "./tools/cube-env.sh arm-none-eabi-size -Ax build/$PRESET/fhs-hdmi-controller.elf"
+
+[tasks.clean]
+description = "Delete the build tree"
+run = "rm -rf build"
+
+[tasks.gdbserver]
+description = "Start ST-LINK GDB server on :61234 (for a manual gdb / the Attach launch config)"
+run = """./tools/cube-env.sh sh -c 'ST-LINK_gdbserver -cp "$(dirname "$(command -v STM32_Programmer_CLI)")" -d -t -k -p 61234'"""
+
+[tasks.gdb]
+description = "Attach arm-none-eabi-gdb to a running gdbserver"
+run = "./tools/cube-env.sh arm-none-eabi-gdb build/$PRESET/fhs-hdmi-controller.elf -ex 'target extended-remote :61234'"
+
+[tasks.kill-probe]
+description = "Kill a stale gdbserver that is holding the ST-LINK"
+run = "pkill -f ST-LINK_gdbserver || true"
+
+[tasks.monitor]
+description = "Open the ST-LINK virtual COM port at 115200"
+run = "minicom -D /dev/ttyACM0 -b 115200"

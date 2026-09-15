@@ -1,0 +1,17 @@
+# ST-LINK probes (on-board Nucleo/Discovery + standalone).
+# Without this, STM32_Programmer_CLI fails: "libusb requires write access" / DEV_CONNECT_ERR.
+# uaccess ACLs the node to a local seat user; MODE 0666 also covers SSH/remote sessions.
+SUBSYSTEM=="usb", ATTRS{idVendor}=="0483", ATTRS{idProduct}=="3744", TAG+="uaccess", MODE:="0666"
+SUBSYSTEM=="usb", ATTRS{idVendor}=="0483", ATTRS{idProduct}=="3748", TAG+="uaccess", MODE:="0666"
+SUBSYSTEM=="usb", ATTRS{idVendor}=="0483", ATTRS{idProduct}=="374a", TAG+="uaccess", MODE:="0666"
+SUBSYSTEM=="usb", ATTRS{idVendor}=="0483", ATTRS{idProduct}=="374b", TAG+="uaccess", MODE:="0666"
+SUBSYSTEM=="usb", ATTRS{idVendor}=="0483", ATTRS{idProduct}=="374d", TAG+="uaccess", MODE:="0666"
+SUBSYSTEM=="usb", ATTRS{idVendor}=="0483", ATTRS{idProduct}=="374e", TAG+="uaccess", MODE:="0666"
+SUBSYSTEM=="usb", ATTRS{idVendor}=="0483", ATTRS{idProduct}=="374f", TAG+="uaccess", MODE:="0666"
+SUBSYSTEM=="usb", ATTRS{idVendor}=="0483", ATTRS{idProduct}=="3752", TAG+="uaccess", MODE:="0666"
+SUBSYSTEM=="usb", ATTRS{idVendor}=="0483", ATTRS{idProduct}=="3753", TAG+="uaccess", MODE:="0666"
+SUBSYSTEM=="usb", ATTRS{idVendor}=="0483", ATTRS{idProduct}=="3754", TAG+="uaccess", MODE:="0666"
+SUBSYSTEM=="usb", ATTRS{idVendor}=="0483", ATTRS{idProduct}=="3755", TAG+="uaccess", MODE:="0666"
+SUBSYSTEM=="usb", ATTRS{idVendor}=="0483", ATTRS{idProduct}=="3757", TAG+="uaccess", MODE:="0666"
+# ST-LINK virtual COM port (ttyACMx)
+SUBSYSTEM=="tty", ATTRS{idVendor}=="0483", TAG+="uaccess", MODE:="0666"
