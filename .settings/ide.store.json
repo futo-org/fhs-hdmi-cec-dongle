@@ -1,0 +1,10 @@
+{
+  "board": "NUCLEO-F072RB",
+  "device": "STM32F072RBT6",
+  "core": "Cortex-M0",
+  "order": 0,
+  "toolchain": "GCC",
+  "source": {
+    "sourceType": "Empty"
+  }
+}
