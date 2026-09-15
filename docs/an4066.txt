@@ -1,0 +1,1137 @@
+                                                                                  AN4066
+                                                                         Application note
+                                            Developing an HDMI-CEC network using
+                                                     an STM32F0xx microcontroller
+
+               Introduction
+               STM32F0xx microcontrollers feature a High definition multimedia interface consumer
+               electronics control (HDMI-CEC) controller that supports the HDMI-CEC v1.4 protocol. The
+               HDMI-CEC controller provides a hardware support of this protocol, and it supports the
+               whole set of features offered with CEC devices.
+               This application note describes the CEC protocol software and hardware implementation
+               based on the HDMI-CEC controller. A real applicative example is also provided to illustrate
+               the software implementation.
+               Table 1 lists the microcontrollers concerned by this application note.
+
+               Table 1.      Applicable products and tools
+                          Type                                  Applicable products
+
+               Microcontrollers        STM32 F0 Entry-level
+
+
+
+
+October 2012                                 Doc ID 022911 Rev 1                                       1/32
+                                                                                                  www.st.com
+Contents                                                                                                                        AN4066
+
+
+Contents
+
+1          High-definition multimedia interface-consumer electronics control
+           (HDMI-CEC) . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 6
+           1.1      Introduction . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 6
+           1.2      Frame description . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 6
+           1.3      Bit timing . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 7
+           1.4      Device connectivity and addressing . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 8
+                    1.4.1        CEC communication . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 8
+                    1.4.2        Enhanced DDC . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 9
+                    1.4.3        Hot Plug Detect Signal . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 10
+                    1.4.4        Physical address discovery . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 10
+                    1.4.5        Discovery Algorithm . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 11
+                    1.4.6        Logical addressing . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 12
+                    1.4.7        Logical Address Allocation . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 12
+           1.5      STM32F0xx HDMI-CEC controller . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 13
+                    1.5.1        Main features . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 13
+                    1.5.2        HDMI-CEC advanced features . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 14
+
+
+2          Hardware environment . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 15
+           2.1      HDMI connector . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 15
+                    2.1.1        I2C bus . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 16
+           2.2      Hardware connection . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 18
+
+3          Firmware description . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 19
+           3.1      Package directories . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 19
+           3.2      Firmware architecture . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 20
+
+4          STM320518-EVAL CEC demonstration . . . . . . . . . . . . . . . . . . . . . . . . . 22
+           4.1      CEC demonstration overview . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 22
+           4.2      Device type selection . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 24
+           4.3      Physical address discovery . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 25
+           4.4      Logical address allocation . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 26
+           4.5      Check of connected devices . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 26
+           4.6      CEC send/receive information display on the LCD . . . . . . . . . . . . . . . . . 26
+
+
+2/32                                              Doc ID 022911 Rev 1
+AN4066                                                                                                          Contents
+
+
+                  4.6.1       Receive subscreen information . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 27
+                  4.6.2       Send information subscreen . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 28
+
+
+5        Conclusion . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 30
+
+6        Revision history . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 31
+
+
+
+
+                                             Doc ID 022911 Rev 1                                                       3/32
+List of figures                                                                                                                             AN4066
+
+
+List of figures
+
+Figure 1.    CEC frame format . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 6
+Figure 2.    Message structure . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 6
+Figure 3.    Blocks . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 7
+Figure 4.    Bit timings . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 7
+Figure 5.    Follower acknowledge . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 8
+Figure 6.    CEC and DDC line connections . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 8
+Figure 7.    Addresses within an HDMI cluster . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 9
+Figure 8.    Physical address discovery algorithm. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 11
+Figure 9.    HDMI cable . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 16
+Figure 10.   Application diagram . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 17
+Figure 11.   Proposed electrical application diagram . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 17
+Figure 12.   Example of hardware connections . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 18
+Figure 13.   Package structure . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 19
+Figure 14.   Firmware architecture . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 20
+Figure 15.   CEC demonstration flow chart . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 24
+Figure 16.   Device type selection . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 25
+Figure 17.   Physical address identification . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 25
+Figure 18.   Physical and logical addresses display . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 26
+Figure 19.   CEC menu . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 27
+Figure 20.   Receive flow chart . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 27
+Figure 21.   Receive subscreen information . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 28
+Figure 22.   Send flowchart . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 29
+Figure 23.   Select CEC command . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 29
+
+
+
+
+4/32                                                      Doc ID 022911 Rev 1
+AN4066
+
+
+         Glossary of acronyms and terms
+         Table 2.       List of acronyms and terms
+                     Term                                        Definition
+
+                                 A message sent to logical address 15, that all devices are expected to
+         Broadcast Message
+                                 receive
+         CEC                     Consumer electronics control
+         DDC                     Display data channel
+                                 The part of a recording device or playback device which provides a
+         Deck
+                                 playback functionality, e.g. from a removable media
+         Destination             The target device for a CEC message
+         E-DDC                   Enhanced display data channel
+         EDID                    Extended display identification data
+         E-EDID                  Enhanced extended display identification data
+                                 A device which has just received a CEC message and is required to
+         Follower
+                                 respond to it
+         HDMI                    High-definition multimedia interface
+         (HDMI) Source           A device with an HDMI output
+         (HDMI) Sink             A device with an HDMI input
+                                 The device which is sending, or has just sent a CEC message and, if
+         Initiator
+                                 appropriate, is waiting for a follower to respond
+         Logical address         A unique address assigned to each device
+         Menu Providing Device   A non-display device that may render a menu on TV
+         Playback device         A device which has the ability to play a media, e.g. a DVD player
+                                 A device which has the ability to record a source such as an internal tuner
+         Recording device
+                                 or an external connection
+         Source Device           A device which is currently providing an AV stream via HDMI
+         Tuner Device            A device which contains a tuner, e.g. an STB or a recording device
+                                 A device with an HDMI input which has the ability to display the input HDMI
+         TV
+                                 signal. Generally, it has no HDMI output
+
+
+
+
+                                       Doc ID 022911 Rev 1                                                5/32
+High-definition multimedia interface-consumer electronics control (HDMI-CEC)                     AN4066
+
+
+1          High-definition multimedia interface-consumer
+           electronics control (HDMI-CEC)
+
+1.1        Introduction
+           Consumer electronics control (CEC) is the appendix supplement 1 to the HDMI (high
+           definition multimedia interface) standard.
+           It is a protocol which provides high-level control functions between all of the various
+           audiovisual products in an environment. It is specified to operate at low speeds with
+           minimum processing and memory overhead.
+           For more details, refer to the high-definition multimedia interface specification
+           (www.hdmi.org).
+
+
+1.2        Frame description
+           The CEC bus is a single-wire protocol which can connect up to 10 audiovisual devices
+           through standard HDMI cabling.
+           All transactions on the CEC line consist of an initiator and one or more followers. The
+           initiator is responsible for sending the message structure and the data. The follower is the
+           recipient of any data and is responsible for setting any acknowledgement bits.
+           A message is conveyed in a single frame which consists of a start bit followed by a header
+           block and, optionally, an opcode and a variable number of operand blocks. Figure 1. shows
+           a CEC frame format.
+
+           Figure 1.     CEC frame format
+
+
+
+
+           Figure 2.     Message structure
+                                                                           0 to 14 operands
+
+           high      Start                                                                       high
+                             Header           Opcode             Operand               Operand
+           impedance  Bit                                                                        impedance
+
+
+
+
+6/32                                      Doc ID 022911 Rev 1
+AN4066          High-definition multimedia interface-consumer electronics control (HDMI-CEC)
+
+
+         Figure 3.     Blocks
+                                                                                         0
+
+             Header block                  INITIATOR[3:0]        DESTINATION[3:0]   EOM ACK
+
+
+                                                                                         0
+
+             Opcode/Operand block                           DATA[7:0]               EOM ACK
+
+
+
+         All these blocks are made of an 8-bit payload (most significant bit transmitted first) followed
+         by an end-of-message (EOM) bit and an acknowledge (ACK) bit.
+         The EOM bit is set in the last block of a message and kept cleared in all others. If a message
+         contains additional blocks after the EOM, those additional blocks should be ignored. The
+         EOM bit may be set in the header block to “ping” other devices and make sure that they are
+         active.
+         The acknowledge bit is always brought to high impedance by the initiator. It can therefore be
+         driven low either by the follower that has read its own address in the header, or the follower
+         that needs to reject a broadcast message.
+         The header consists of the source logical address field, and the destination logical address
+         field. Note that the special address 0xF is used for broadcast messages.
+
+
+1.3      Bit timing
+         The format of the start bit is unique and identifies the start of a message. It should be
+         validated by its low duration and its total duration.
+         All remaining data bits in the message, after the start bit, have a consistent timing. The high-
+         to-low transition at the end of the data bit is the start of the next data bit except for the final
+         bit where the CEC line remains high.
+         Figure 4 shows the timings of the start bit and the different data bits.
+
+         Figure 4.     Bit timings
+
+
+
+
+                                         Doc ID 022911 Rev 1                                           7/32
+High-definition multimedia interface-consumer electronics control (HDMI-CEC)                      AN4066
+
+
+           CEC Figure 5 shows an example bit with both initiator and follower where the follower may
+           assert the bit to logical 0 to acknowledge a data block. The initiator outputs a logical 1, thus
+           allowing the follower to change the CEC state by pulling the control line low for the duration
+           of the safe sample period.
+
+           Figure 5.    Follower acknowledge
+
+
+
+
+1.4        Device connectivity and addressing
+
+1.4.1      CEC communication
+           By definition, the HDMI system architecture consists of sources and sinks. A given device
+           may have one or more HDMI input(s) and output(s). Each HDMI input on the device should
+           follow all the rules for an HDMI sink, and each HDMI output should follow all the rules for an
+           HDMI source.
+           The communication between the source device and the sink device implemented through
+           the DDC lines is an I2C bus included in the HDMI cable.
+           The DDC is used for configuration and status exchange between a single source and a
+           single sink. The optional CEC protocol provides high-level control functions between all of
+           the various audiovisual products in a user’s environment.
+
+           Figure 6.    CEC and DDC line connections
+
+
+
+
+8/32                                      Doc ID 022911 Rev 1
+AN4066          High-definition multimedia interface-consumer electronics control (HDMI-CEC)
+
+
+         Figure 7.    Addresses within an HDMI cluster
+
+
+
+
+1.4.2    Enhanced DDC
+         Enhanced DDC described in this section is defined in VESA “ENHANCED DISPLAY DATA
+         CHANNEL STANDARD Version 1 (September 2, 1999)”. All sinks are required to support
+         these enhanced DDC features. If the E-EDID structure of a sink is longer than 256 bytes, it
+         should support the segment pointer.
+         Timing
+         Data is synchronized with the SCL signal and timing should comply with the Standard Mode
+         of the I2C specification (100 kHz maximum clock rate).
+         I2C Bus is a standard two-wire (clock and data) serial data bus protocol. Refer to the I2C
+         specification for details.
+         Note that an HDMI sink may hold off the DDC transaction by stretching the SCL line during
+         the SCL-low period following the Acknowledge bit as permitted by the I2C specification. All
+         HDMI sources should delay the DDC transaction while the SCL line is being held low.
+         Data Transfer Protocols
+         The source should use I2C commands to read information from a sink’s E-EDID with a slave
+         address.
+         In an Enhanced DDC, a segment pointer is used to allow the addressing of the E-EDID
+         outside the normal 256-byte limit of the 0xA0/0xA1 address pair. The Enhanced DDC
+         protocol sets the segment pointer before the remainder of the DDC command.
+         Segment pointer
+         Enhanced DDC allows access of up to 32 Kbytes of data. This is accomplished using a
+         combination of the 0xA0/0xA1 address pair and a segment pointer. For each value of the
+         segment pointer, 256 bytes of data are available at the 0xA0/0xA1 address pair. An
+         unspecified segment pointer references the same data as when the segment pointer is zero.
+
+
+
+
+                                       Doc ID 022911 Rev 1                                       9/32
+High-definition multimedia interface-consumer electronics control (HDMI-CEC)                    AN4066
+
+
+           Each successive value of the segment pointer allows access to the next two blocks of E-
+           EDID (128 bytes each). The value of the segment pointer register cannot be read since it is
+           reset at the completion of each command.
+           Enhanced DDC Sink
+           The sink should be Enhanced DDC read compliant.
+           The sink should be capable of responding with EDID 1.3 data and up to 255 extension
+           blocks, each 128 bytes long (up to 32 Kbytes total E-EDID memory) whenever the Hot Plug
+           Detect signal is asserted.
+           The sink should be capable of providing E-EDID information over the Enhanced DDC
+           channel whenever the +5V Power signal is provided. The information should be available
+           within 20 msec after the +5V Power signal is provided.
+           Enhanced DDC Source
+           The source should use Enhanced DDC protocols. The source should be capable of reading
+           EDID 1.3 data at DDC address 0xA0. The source reads Enhanced EDID extension data at
+           DDC address 0xA0 using segment pointer 0x60.
+
+1.4.3      Hot Plug Detect Signal
+           The HPD (Hot-Plug-Detect) feature is a communication mechanism between a source and a
+           sink device that makes the source device aware that it has been connected/disconnected
+           to/from the sink device.
+           When an HDMI cable is inserted between the two devices, the resulting hot-plug detection
+           instantiates a start-up communication sequence. The EDID information stored in the sink
+           device gets read by the source device though the DDC bus, and the source device typically
+           presents itself on the CEC link and requests basic status information from the sink device.
+           An HDMI sink should not assert high voltage levels on its HPD pin when the E-EDID is not
+           available for reading. This requirement should be fulfilled at all times, even if the sink is
+           powered off or in standby. The HPD pin may be asserted only when the +5 V power line
+           from the source is detected. This ensures that the HPD pin is not asserted before the third
+           make of the connector.
+           A source may use a high voltage level HPD signal to initiate the reading of E-EDID data. It
+           does not indicate whether the sink is powered, or whether the HDMI input on the sink is
+           selected or active.
+           An HDMI sink should indicate any change to the contents of the E-EDID by driving a low
+           voltage level pulse on the HPD pin. This pulse should last at least 100 ms.
+
+1.4.4      Physical address discovery
+           In order to allow CEC to address specific physical devices, each of them has a physical
+           address. The bus connectivity is worked out whenever the hot plug detect (HPD) signal is
+           de-asserted by the physical address discovery process. That process uses only the
+           DDC/EDID (display data channel/extended display identification data) mechanism. Starting
+           from the CEC root device which takes address 0b0000 (normally the TV), all sinks and
+           repeaters, whether CEC-capable or not, determine the address their source device should
+           take, and make it available in the source address field of the EDID vendor-specific data
+           block (EDID_EXT_VSDB_B0-1). Thereby, except for the root device, all devices have the
+           physical address stored in the EDID of their connected sink.
+
+
+
+10/32                                    Doc ID 022911 Rev 1
+AN4066          High-definition multimedia interface-consumer electronics control (HDMI-CEC)
+
+
+         The physical address of each node is determined through the physical address discovery
+         process. This process is dynamic as it automatically adjusts physical addresses as required,
+         and devices are physically or electrically added or removed from the device tree.
+         All sinks and repeaters should perform the steps of physical address discovery and
+         propagation even if those devices are not CEC-capable. Sources are not required to
+         determine their own physical address unless they are CEC-capable.
+         All addresses are 4 digits long, allowing for a 5-device-deep hierarchy. All are identified in
+         the form of n.n.n.n in the following description.
+         A sink or repeater that is acting as the CEC root device generates its own physical address:
+         0.0.0.0. The source or repeater reads its physical address from the EDID of the connected
+         sink. The CEC line may be connected to only one HDMI output so a device with multiple
+         HDMI outputs will read its physical address from the EDID on the CEC-connected output.
+         Each sink and repeater is responsible for generating the physical address of all source
+         devices connected to that device by appending a port number onto its own physical address
+         and placing that value in the EDID for that port.
+
+1.4.5    Discovery Algorithm
+         The following algorithm is used to allocate the physical address of each device whenever
+         HPD is de-asserted, or upon power-up:
+
+         Figure 8.    Physical address discovery algorithm
+             Disable assertion of HPD to all source devices
+             If I am CEC root
+                  Set my_address to 0.0.0.0
+             Else
+                  Wait for HPD from sink
+                  Query sink for my_address of my connection
+                  The device shall retain this physical address until
+             HPD is removed (or the device is powered off).
+             End if
+             If device has connections for source devices then
+                Label all possible connections to source devices
+                uniquely starting from connection_label = 1 to the
+                number of source input connections
+               If device has separate EDIDs for each source connection
+             then
+                     If my_address ends with 0 then
+                       Set each source_physical_address to my_address
+                       with the first 0 being replaced with
+                       connection_label.
+                     Else (i.e. beyond the fifth layer of the tree)
+                         Set each source_physical_address to F.F.F.F
+                     End if
+               Else
+                Set each source_physical_address to my_address
+               End if
+               Write source_physical_address to HDMI VSDB in EDID for
+             each source connection
+             End if
+             Allow HPD to be asserted for source devices
+
+
+
+
+                                        Doc ID 022911 Rev 1                                         11/32
+High-definition multimedia interface-consumer electronics control (HDMI-CEC)                          AN4066
+
+
+           Whenever a new physical address (other than F.F.F.F) is discovered, a CEC device should:
+           ●    allocate the logical address (see 1.4.7: Logical Address Allocation)
+           ●    report the association between its logical and physical addresses by broadcasting
+                <Report Physical Address>.
+           This process allows any node to create a map of physical connections to logical addresses.
+
+1.4.6      Logical addressing
+           Apart from the physical address, each device appearing on the control signal line has a
+           unique logical address. This address defines a device type as well as being a unique
+           identifier. This address is 0 for a TV set with physical address 0b0000 and 14 or even 15
+           otherwise. It is defined in the CEC_OAR register and in the upper nibble of the first byte of
+           the transmitted message. All CEC devices therefore have both a physical and a logical
+           address, whereas non-CEC devices only have a physical address.
+
+           Table 3.        Logical addresses
+                  Address                                            Device
+
+                      0             TV
+                      1             Recording device 1
+                      2             Recording device 2
+                      3             Tuner 1
+                      4             Playback device 1
+                      5             Audio system
+                      6             Tuner 2
+                      7             Tuner 3
+                      8             Playback device 2
+                      9             Recording device 3
+                      10            Tuner 4
+                      11            Playback device 3
+                      12            Reserved
+                      13            Reserved
+                      14            Free use
+                      15            Unregistered (as initiator address) Broadcast (as destination address)
+
+
+1.4.7      Logical Address Allocation
+           Note that a logical address should only be allocated when a device has a valid physical
+           address (i.e. not F.F.F.F). At all other times, a device should take the ‘Unregistered’ logical
+           address (15).
+           Only the device at physical address 0.0.0.0 may take logical address TV (0). A TV at any
+           other physical address should take the ‘Free Use’ (14) address. If address 14 is already
+           allocated, it should take the ‘Unregistered’ address (15).
+
+
+
+12/32                                     Doc ID 022911 Rev 1
+AN4066            High-definition multimedia interface-consumer electronics control (HDMI-CEC)
+
+
+         Reserved addresses should not be used at present and are reserved for future extensions
+         to this specification.
+         Where more than one possible logical address is available for the given device type (e.g.
+         Tuner 1, Tuner 2, etc.), an address allocation procedure should be carried out by a newly
+         connected device. The device takes the first allocated address for that device type and
+         sends a <Polling Message> to the same address (e.g. Tuner 1 -->Tuner 1). If the <Polling
+         Message> is not acknowledged, then the device stops the procedure and retains that
+         address.
+         If the first address is acknowledged, then the device takes the next address for that device
+         type and repeats the process (e.g. Tuner 2 .. Tuner 2). Again, if the message is not
+         acknowledged, the device keeps that address.
+         This procedure continues until all possible ‘type specific’ addresses have been checked; if
+         no ‘type specific’ addresses are available, the device should take the unregistered address
+         (15). Note that several physical devices might be sharing this address.
+         A device may lose its logical address when it is disconnected or switched off. However, it
+         may remember its previous logical address, so that the next time it is reconnected or
+         switched on, it can begin the polling process at its previous logical address and try each
+         other allowable logical address in sequence before taking the unregistered address. For
+         example if an STB that was previously allocated address Tuner 2 is reconnected, it would
+         poll Tuner 2, Tuner 3, Tuner 4 and Tuner 1 before taking the unregistered address.
+         If a device loses its physical address at any time (e.g. it is unplugged), then its logical
+         address should be set to unregistered (15).
+
+
+1.5      STM32F0xx HDMI-CEC controller
+         The STM32F0xx HDMI-CEC controller provides a hardware support of CEC protocol.
+
+1.5.1    Main features
+         ●    Supports HDMI-CEC v1.4
+         ●    Supports the whole set of features offered with CEC (devices may use all or only some
+              of these features, depending on the functionality):
+              –     One touch play - a device may be played and become the active source by
+                    pressing a single button.
+              –     System standby - enables devices to be set on standby by pressing a single
+                    button.
+              –     Preset transfer - the presets of a device can be auto-configured to match those of
+                    the TV.
+              –     One touch record - used to make recordings by pressing a single button.
+              –     Timer programming - any device can program a timer recording on a recording
+                    device.
+              –     System information - allows devices to auto-configure their language and country
+                    settings.
+              –     Deck control - allows a device to control and interrogate a playback device.
+              –     Tuner control - allows a device to control the tuner of another device.
+              –     Vendor specific commands - allows vendor-defined commands to be used.
+
+
+
+                                        Doc ID 022911 Rev 1                                            13/32
+High-definition multimedia interface-consumer electronics control (HDMI-CEC)                   AN4066
+
+
+               –    OSD display - allows a device to display text using the on-screen display of the TV.
+               –    Device menu control - allows a device to control the menu of another device.
+               –    Routing control - enables control of CEC switches for the streaming of a new
+                    source device.
+
+1.5.2      HDMI-CEC advanced features
+           The STM32F0xx HDMI-CEC controller provides an easy platform to build CEC firmware
+           applications:
+           ●   32 kHz CEC kernel works by 2 clock-source options
+               –    Internal RC dedicated line with fixed prescaler (HSI/244)
+               –    Low Speed External quartz (LSE)
+           ●   Configurable Signal Free Time before of transmission start
+               –    automatic by hardware, according to CEC state and transmission history
+               –    fixed by software (7 timing options)
+           ●   Configurable Peripheral Address (OAR), supports multiple addresses
+           ●   Supports Listen Mode: enabling the reception of CEC messages sent to a destination
+               address different from OAR without interfering with the CEC line
+           ●   Configurable Rx-tolerance margin in
+               –    Standard tolerance
+               –    Extended tolerance
+           ●   Receive-Error detection
+               –    Bit rising error (BRE), with optional stop of reception (BRESTP)
+               –    Short Bit Period Error (SBPE)
+               –    Long Bit Period Error (LBPE)
+           ●   Configurable Error-Bit Generation
+               –    on BRE detection (BREGEN)
+               –    on LBPE detection (LBPEGEN)
+               –    always generated on SBPE detection
+           ●   Transmission Error Detection (TXERR)
+           ●   Arbitration Lost Detection (ARBLST) with automatic transmission retry
+           ●   Transmission underrun detection (TXUDR)
+           ●   Reception overrun detection (RXOVR)
+           ●   Works in system stop for ultra low-power application. The CEC can work in stop mode
+               (without an APB clock). The CEC clock (32 kHz clock) must be provided for this
+               purpose. It can also generate an interrupt in this CEC clock domain, that can eventually
+               wake up the CPU from the slow mode.
+           Refer to the STM32F0xx reference manual (RM0091) for further details.
+
+
+
+
+14/32                                    Doc ID 022911 Rev 1
+AN4066                                                                        Hardware environment
+
+
+2        Hardware environment
+
+         To be fully compliant with the stringent HDMI 1.4 specification, specially when the CEC
+         device is in the power-off state, a fully integrated ESD protection should be added externally
+         to the STM32F0xx device. For that purpose, the HDMI2C1-5DIJ ensures level-shifting and
+         serves as the signal booster for control links of HDMI 1.4 transmitters. The HDMI2C1- 5DIJ
+         is a bidirectional isolation buffer, integrating hysteresis and signal boosters for maximum
+         system robustness and signal integrity.
+         In addition to this circuit, the 27 Kohm pull-up resistor on the CEC line should be externally
+         connected to the STM32F0xx.
+         With these few hardware additions, the STM32F0xx CEC solution (CEC peripheral plus
+         ESD protection circuit) is fully compliant with the HDMI 1.4 standard.
+         Two HDMI connectors are available for the STM320518-EVAL board (CN3 and CN4). The
+         CEC, SCL, SDA and HPD signals are supported and connected to STM32F0xx through
+         HDMI2C1-5DIJ.
+         The external hardware component is only needed when the CEC power-off state is
+         necessary in the application. If the power-off state is not necessary, you can directly connect
+         the STM32F0xx CEC line to the CEC bus.
+         The two HDMI connectors, CN3 and CN4, are available on the STM320518-EVAL board.
+         ●    The CN3 connector is an HDMI sink connector with:
+              –    DDC connected to I2C2 of STM32F051R8T6
+              –    HPD controlled by IO PA11 through transistor T3
+              –    CEC connected to PB10 through transistor T4
+         ●    The CN4 connector is an HDMI source connector with:
+              –    DDC connected to I2C1 of STM32F051R8T6
+              –    HPD controlled by IO PA8
+              –    CEC connected to PB10 through transistor T4
+              –    HDMI 5V powered by power switch U5
+
+
+2.1      HDMI connector
+         Only an HDMI vendor-approved connector should be used. The list of HDMI connectors
+         approved is available on the HDMI site. (www.hdmi.org)
+         The differential impedance of this connector should be equal to 100 ohm +/- 15%. This can
+         be checked by using any Time domain reflectrometry (TDR) equipment.
+
+
+
+
+                                       Doc ID 022911 Rev 1                                         15/32
+Hardware environment                                                                            AN4066
+
+
+          Figure 9.      HDMI cable
+
+
+
+
+          Table 4.       HDMI connector pinout description
+             Pin Number               Signal Name             Pin Number             Signal Name
+
+                     1        TMDS Data 2+                        11        TMDS Clock Shield
+                     2        TMDS Data 2 Shield                  12        TMDS Clock-
+                     3        TMDS Data 2-                        13        CEC
+                     4        TMDS Data 1+                        14        No Connect
+                     5        TMDS Data 1 Shield                  15        DDC Clock
+                     6        TMDS Data 1-                        16        DDC Data
+                     7        TMDS Data 0+                        17        Ground
+                     8        TMDS Data 0 Shield                  18        +5 V Power
+                     9        TMDS Data 0-                        19        Hot Plug Detect
+                  10          TMDS Clock+                         20        SHELL
+
+
+2.1.1     I2C bus
+          The Display Data Channel (DDC) I/Os and wires (SDA, SCL, DDC/CEC Ground) should
+          meet the requirements specified in the I²C bus Specification, version 2.1 (Section 15 for
+          “Standard-Mode” devices).
+          Discussions about high-capacitance environments found in the I²C Specification section
+          (17.2 “Switched pull-up circuit for Fast-mode I²C-bus devices”) also apply to the HDMI
+          environment.
+          This section covers the electrical specifications for the I²C (defined by the CTS and by the
+          I²C bus specification). Timing specifications are not dealt with here. The HDMI standard
+          specifies that the maximum clock rate is 100 kHz.
+          The I²C bus is a standard two-wire (SCL for clock and SDA for data) serial databus protocol.
+          The electrical specifications for I²C bus device I/Os are power-supply-dependent. An I²C bus
+          device with fixed input levels of 1.5 V and 3 V can have its own supply voltage. A pull-up
+          resistor must be connected to a 5 V ±10% supply. When devices with fixed input levels are
+          mixed with devices with input levels dependent on VCC, the latter have to be connected to a
+          common 5 V ±10% supply line with pull-up resistors connected to their SDA and SCL pins.
+          The ST reference board implemented in this application note has 3.3 V-tolerant I/Os and an
+          HDMI-compatible I²C bus dependent on a +5 V VCC supply. For the implementation, it is
+          recommended to use the set-up shown in Figure 11, with the HDMI2C1-5DIJ chip.
+
+
+16/32                                   Doc ID 022911 Rev 1
+AN4066                                                        Hardware environment
+
+
+         Figure 10. Application diagram
+
+
+
+
+         Figure 11. Proposed electrical application diagram
+
+
+
+
+                                   Doc ID 022911 Rev 1                       17/32
+Hardware environment                                                                           AN4066
+
+
+2.2       Hardware connection
+          To run the CEC demo, you must connect the HDMI connector (CN3 or CN4) of the
+          STM320518-EVAL evaluation board to another HDMI device (TV, recording device...) using
+          an HDMI cable.
+          The CN3 connector is allocated to the sink device, but the CN4 connector is allocated to the
+          source device.
+
+          Figure 12. Example of hardware connections
+
+
+
+
+Note:     You can connect the STM320518-EVAL evaluation board to other STM320518-EVAL
+          evaluation boards using HDMI cables or using a simple wire between all CEC device lines
+          (PB.10). In this case, do not forget to connect all board grounds together.
+
+          Table 5.        STM32F0xx and HDMI-CEC connection
+                HDMI-CEC pins          STM320518-EVAL        Configuration             Remap
+
+           CEC line pin                      PB.10        Output open drain        PA.5 and PB.8
+           CEC_SINK_I2C_SCL                  PF.6         Output open drain
+           CEC_SINK_I2C_SDA                  PF.7         Output open drain
+           CEC_HPD_SINK                      PA11         Output push pull
+           CEC_SOURCE_I2C_SCL                PB.6         Output open drain
+           CEC_SOURCE_I2C_SDA                PB.7         Output open drain
+           CEC_SOURCE_HPD_PIN                PA.8         Output push pull
+
+
+
+
+18/32                                  Doc ID 022911 Rev 1
+AN4066                                                                         Firmware description
+
+
+3        Firmware description
+
+3.1      Package directories
+         When unzipped, the package has the structure shown in the figure below.
+
+         Figure 13. Package structure
+
+
+
+
+         _htmresc folder: This folder contains all package html page resources.
+         Libraries folder: This folder contains all CMSIS files and STM32F0xx Standard Peripheral's
+         Drivers
+         ●   CMSIS subfolder: This folder contains the STM32F0xx CMSIS files - device peripheral
+             access layer and core peripheral access layer.
+         ●   STM32F0xx_StdPeriph_Driver subfolder: This folder contains all the subdirectories
+             and files that make up the core of the library:
+             –    inc sub-folder contains the peripheral's drivers header files.
+             –    src sub-folder contains the peripheral's drivers source files.
+         Project folder: This folder contains preconfigured projects and the source and header files
+         of the CEC demonstration
+         ●   src subfolder: contains the source files
+             –    stm320518_eval_cec.c: provides all the STM320518-EVAL HDMI-CEC firmware
+                  functions. See the list of functions in Table 6.: High level functions.
+             –    main.c: file in which the system clocks and interrupts are configured.
+             –    stm32f0xx_it.c: file in which the CEC events (transmitter/receiver) and error
+                  (acknowledge failure, bus error, overrun, arbitration loss) interrupts are handled.
+             –    cec_display.c: displays the CEC demonstration messages on either the
+                  STM320518-EVAL evaluation board LCD or the HyperTerminal.
+
+
+
+
+                                      Doc ID 022911 Rev 1                                        19/32
+Firmware description                                                                           AN4066
+
+
+           ●   inc subfolder: contains the header files
+               –    stm320518_eval_cec.h: header file for stm320518_eval_cec.c
+               –    stm32f0xx_it.h: headers of the interrupt handlers
+               –    stm32f0xx_conf.h: configuration file
+               –    cec_display.h: header file of cec.display.c
+           ●   EWARM, MDK-ARM, TASKING and TrueSTUDIO subfolders: contain tool-dependent
+               preconfigured projects and workspaces.
+           Utilities folder: STM32_EVAL implements an abstraction layer to interact with the Human
+           Interface resources, buttons, LEDs, LCD and COM ports (USARTs) available on
+           STMicroelectronics STM320518-EVAL evaluation board.
+           The stm32f0518_eval.c driver provides a common API to interact with buttons, LEDs and
+           COM ports, while these resource hardware definitions are made in the header file of
+           STM320518-EVAL evaluation board (stm320518_eval.h). A common API is provided to
+           manage the LCD (stm320518_eval_lcd.c).
+
+
+3.2        Firmware architecture
+           Figure 14. shows the firmware architecture, with the different blocks and levels.
+
+           Figure 14. Firmware architecture
+
+
+
+
+20/32                                    Doc ID 022911 Rev 1
+AN4066                                                                              Firmware description
+
+
+         ●   The STM320518-EVAL evaluation board is designed as a complete development
+             platform for STMicroelectronics ARM Cortex-M0 core-based STM32F051R8T6
+             microcontroller with two I2Cs, two SPIs, two USARTs, a 12-bit ADC, a 12-bit DAC, two
+             GP comparators, an internal 8 KB SRAM and 64 KB Flash, Touch sensing, CEC, SWD
+             debugging support.
+         ●   STM32F0xx_StdPeriph_Driver: STM32F0xx Standard Peripherals Library
+         ●   User application: STM320518-EVAL CEC demonstration
+         ●   Display module: It can be either an LCD or a HyperTerminal. It is used to display the
+             CEC demonstration messages.
+         ●   CEC driver (stm320518_eval_cec): The user may interface the CEC devices directly
+             through the driver application layer. The driver functions are summarized in the
+             following sections.
+
+         High-level functions
+         These are the functions that can simply be called by the final application to execute all
+         needed configurations and perform high-end functionalities (such as sending and receiving
+         messages).
+
+         Table 6.     High level functions
+                    Function name                                     Description
+
+                                             Initialize the HDMI-CEC:
+                                             – Enable the CEC and GPIOx clocks
+                                             – Configure the CEC line
+         HDMI_CEC_Init                       – Call the Physical Address Discovery function for sink end
+                                                source devices
+                                             – Call the Logical Address Allocation for sink and source
+                                                devices
+                                             – Call the Report Physical Address function
+         HDMI_CEC_TransmitMessage            Transmit message (header, opcode and operands)
+         HDMI_CEC_GetErrorStatus             Get the Interrupt and Status Register (ISR) register status
+                                             Allows to process all the interrupts (TXACKE, TXERR,
+         HDMI_CEC_ProcessIRQSrc              TXUDR, TXEND, TXBR, ARBLST, RXACKE, LBPE, SPBE,
+                                             BRE, RXOVR, RXEND, RXBR) that are high
+         SourcePhysicalAddressDiscovery      Algorithm used to discover the source physical address
+         SinkPhysicalAddressDiscovery        Algorithm used to discover the sink physical address
+                                             Allocate the device logical address based on the logical
+         LogicalAddressAllocation
+                                             address allocation algorithm
+                                             Report the physical address to all other devices, thus allowing
+         HDMI_CEC_ReportPhysicalAddress
+                                             any device to create a map of the network.
+         HDMI_CEC_CommandCallBack            Handle the CEC command receive callback
+
+
+
+
+                                        Doc ID 022911 Rev 1                                             21/32
+STM320518-EVAL CEC demonstration                                                                 AN4066
+
+
+4         STM320518-EVAL CEC demonstration
+
+          The demo provided with this user manual is intended to run on an STM320518-EVAL
+          evaluation board and it shows how to configure the HDMI-CEC peripheral and how to create
+          a CEC network providing a high level communication between different devices using CEC
+          protocol messages.
+          By default, the STM32F0xx CEC device is clocked by the HSI oscillator. To change the LSE
+          oscillator as a CEC source clock, uncomment the define LSE_SOURCE_CLK in the
+          stm320518_eval_cec.c file.
+          The STM32F0xx CEC demo supports both sink and source devices. By managing defines,
+          the user can choose the CEC sink device or the source one.
+Note:     To configure a CEC device as a sink, you should do as follows in the stm320518_eval_cec.h
+          file:
+          - Change the HDMI_CEC_ROOT define value to 0x01,
+          - Keep the HDMI_CEC_USE_DDC define commented.
+Note:     To Configure a CEC device as a source with a physical address identification, you should do
+          as follows in the stm320518_eval_cec.h file:
+          - Change the HDMI_CEC_ROOT define value to 0x00,
+          - Uncomment the HDMI_CEC_USE_DDC define.
+Note:     You can also run the STM32F0xx HDMI-CEC demonstration without physical address
+          acquisition. The two STM32F0xx CEC devices are both configured as sources without a
+          physical address identification.You should do as follows in the stm320518_eval_cec.h file:
+          - Change the HDMI_CEC_ROOT define value to 0x00,
+          - Comment the HDMI_CEC_USE_DDC define.
+
+
+4.1       CEC demonstration overview
+          The CEC demonstration contains 2 different configurations:
+          1.   Use the joystick push-buttons and display the CEC demo messages on the
+               STM320518-EVAL evaluation board LCD.
+          2.   Use the keyboard keys (r: right, l: left, u: up, d: down and s: select) and display the CEC
+               demo messages on the HyperTerminal.
+Note:     To use the second configuration, the user must comment the following defines in the
+          cec_display.c file:
+               #define LCD_DISPLAY
+               #define USE_JOYSTICK
+          In the following sections, SEL, RIGHT, LEFT, UP and DOWN buttons mean respectively the
+          SEL, RIGHT, LEFT, UP and DOWN joystick push-buttons or the “s”,”r”,”l”, “u” and “d”
+          keyboard keys depending on the selected configuration.
+          Figure 15 shows the menu system of the CEC demonstration. After a system reset, the user
+          should use the UP, DOWN, RIGHT, LEFT and SEL buttons to select the device type of the
+          CEC device. Then he/she should press the SEL button to enter the CEC menu.
+
+
+
+
+22/32                                    Doc ID 022911 Rev 1
+AN4066                                                      STM320518-EVAL CEC demonstration
+
+
+         The LEFT and RIGHT buttons should be used to navigate between the available follower
+         addresses and CEC commands. The SEL button should be used to select the desired
+         follower address or command to be send.
+         To run the CEC demonstration:
+         1.   Load the CEC demonstration and reset the device.
+         2.   Select the device type of CEC using the joystick push-buttons or the keyboard keys
+              (see Section 4.2: Device type selection)
+         3.   If the selected device type is not available, the following message is displayed:
+              Unregistered Device. In this case, the user must reset the device and select another
+              device type.
+         4.   The physical and logical addresses are displayed on the display module (LCD or
+              HyperTerminal) selected.
+         5.   Use the SEL button to enter the CEC menu.
+         6.   Use the LEFT and RIGHT buttons to navigate between the follower addresses. Use the
+              SEL button to select the desired follower address (see Figure 19.: CEC menu).
+Note:    Only the addresses of connected devices are available. If a new device is connected, its
+         logical address will be added to the available follower address.
+         7.   Use the LEFT and RIGHT buttons to navigate between the available CEC commands.
+              Use the SEL button to select the desired command to be sent (see Figure 23.: Select
+              CEC command).
+         8.   The send status is displayed on the selected display module. Repeat from step 6 if you
+              want to send another command, or reset the device if you want to select a different
+              device type.
+
+
+
+
+                                      Doc ID 022911 Rev 1                                      23/32
+STM320518-EVAL CEC demonstration                                                               AN4066
+
+
+          Figure 15. CEC demonstration flow chart
+
+
+
+
+4.2       Device type selection
+          The user must use the following buttons to select the device type of CEC:
+          ●   RIGHT button: select recording as the device type
+          ●   LEFT button: select tuner as the device type
+          ●   UP button: select playback as the device type
+          ●   DWON button: select audio system as the device type
+          The selected device type will be used in the logical address allocation algorithm to allocate
+          the logical address of the CEC device.
+
+
+
+24/32                                   Doc ID 022911 Rev 1
+AN4066                                                       STM320518-EVAL CEC demonstration
+
+
+         Figure 16. Device type selection
+
+
+
+
+4.3      Physical address discovery
+         The algorithm defined in Section 1.4.5: Discovery Algorithm is used to allocate the physical
+         address of each device. If no CEC error is generated, the CEC device will execute the
+         logical address allocation algorithm.
+
+         Figure 17. Physical address identification
+
+
+
+
+                                       Doc ID 022911 Rev 1                                      25/32
+STM320518-EVAL CEC demonstration                                                               AN4066
+
+
+4.4       Logical address allocation
+          The device type selected by the user will be used to allocate the logical address as
+          described in Section 1.4.7: Logical Address Allocation. If no CEC error is generated, the
+          physical and logical addresses are displayed on the LCD; then, the user must press the SEL
+          push-button to enter the CEC menu.
+Note:     If the selected device type is not available, the following message is displayed:
+          “Unregistered Device.” In this case, the user must reset the device and select another device
+          type.
+Note:     Whenever a new physical address is discovered, the CEC device reports the association
+          between its logical and physical addresses by broadcasting <Report Physical Address>.
+
+          Figure 18. Physical and logical addresses display
+
+
+
+
+4.5       Check of connected devices
+          Before displaying the available follower addresses, the CEC device checks the connected
+          devices by sending a <Polling Message> to all logical addresses. If the <Polling Message>
+          is acknowledged, then the device retains that address. After that step, only the addresses of
+          the connected devices are displayed.
+          If no device is connected, only the broadcast address is available. If a new device is
+          connected after the connected device check step, its address is automatically added to the
+          list of available addresses.
+
+
+4.6       CEC send/receive information display on the LCD
+          The LCD screen is divided into two parts, as shown in Figure 19: CEC menu:
+          ●   a subscreen that shows the CEC receive information: receive status, sender address
+          ●   a subscreen that allows to select the follower address and the command to send
+
+
+
+
+26/32                                   Doc ID 022911 Rev 1
+AN4066                                                     STM320518-EVAL CEC demonstration
+
+
+         Figure 19. CEC menu
+
+
+
+
+4.6.1    Receive subscreen information
+         The following information is displayed when receiving a new message:
+         ●   Receive status
+         ●   Sender address
+         ●   Number of bytes (including the sender address)
+         ●   Opcode message
+         ●   Data (operands)
+
+         Figure 20. Receive flow chart
+
+
+
+
+                                     Doc ID 022911 Rev 1                               27/32
+STM320518-EVAL CEC demonstration                                                           AN4066
+
+
+          Figure 21: Receive subscreen information shows that the device has correctly received the
+          frame from the sender with address 0x5.
+          ●   Sender Address: 0x5
+          ●   Number of bytes received: 0x3 (header + opcode + data)
+          ●   Message opcode: 0x44
+          ●   Data: 0x41
+
+          Figure 21. Receive subscreen information
+
+
+
+
+Note:     The STM320518 CEC device only responds to the following commands:
+          ●   Standby
+          ●   Get CEC version
+          ●   Give physical address
+          ●   Give OSD name
+          For other commands, it sends a feature abort.
+
+4.6.2     Send information subscreen
+          This subscreen is used to navigate among the connected device addresses by using the
+          RIGHT and LEFT buttons. After selecting the follower address, you must select the
+          command to be sent to the selected follower address with the LEFT, RIGHT and SEL
+          buttons. Once you have selected a command, the CEC device sends this command to the
+          selected follower address, and displays the transmission status.
+          You can then select a new follower address and a new command.
+
+
+
+
+28/32                                  Doc ID 022911 Rev 1
+AN4066                                                     STM320518-EVAL CEC demonstration
+
+
+         Figure 22. Send flowchart
+
+
+
+
+         Figure 23. Select CEC command
+
+
+
+
+                                     Doc ID 022911 Rev 1                               29/32
+Conclusion                                                                                    AN4066
+
+
+5            Conclusion
+
+             This application note gives details on the HDMI-CEC controller available on the STM32F0xx
+             evaluation boards (STM320518-EVAL) and the CEC demonstration firmware running on this
+             evaluation board.
+Note:        The HDMI-CEC communication can be enhanced by adding Infrared protocols so that the
+             user commands can be generated in a more flexible way. The STM32F0xx devices can
+             easily handle this configuration using the embedded CEC and timer peripherals (the STM32
+             timer is used to decode the infrared protocols with the associated software). This
+             combination (CEC communication / Infrared protocols) is implemented on the STM320518-
+             EVAL firmware demo.
+
+
+
+
+30/32                                    Doc ID 022911 Rev 1
+AN4066                                                              Revision history
+
+
+6        Revision history
+
+         Table 7.    Document revision history
+              Date       Revision                         Changes
+
+           05-Oct-2012      1       Initial release.
+
+
+
+
+                                    Doc ID 022911 Rev 1                        31/32
+                                                                                                                                     AN4066
+
+
+
+
+                                                           Please Read Carefully:
+
+
+Information in this document is provided solely in connection with ST products. STMicroelectronics NV and its subsidiaries (“ST”) reserve the
+right to make changes, corrections, modifications or improvements, to this document, and the products and services described herein at any
+time, without notice.
+All ST products are sold pursuant to ST’s terms and conditions of sale.
+Purchasers are solely responsible for the choice, selection and use of the ST products and services described herein, and ST assumes no
+liability whatsoever relating to the choice, selection or use of the ST products and services described herein.
+No license, express or implied, by estoppel or otherwise, to any intellectual property rights is granted under this document. If any part of this
+document refers to any third party products or services it shall not be deemed a license grant by ST for the use of such third party products
+or services, or any intellectual property contained therein or considered as a warranty covering the use in any manner whatsoever of such
+third party products or services or any intellectual property contained therein.
+
+
+UNLESS OTHERWISE SET FORTH IN ST’S TERMS AND CONDITIONS OF SALE ST DISCLAIMS ANY EXPRESS OR IMPLIED
+WARRANTY WITH RESPECT TO THE USE AND/OR SALE OF ST PRODUCTS INCLUDING WITHOUT LIMITATION IMPLIED
+WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE (AND THEIR EQUIVALENTS UNDER THE LAWS
+OF ANY JURISDICTION), OR INFRINGEMENT OF ANY PATENT, COPYRIGHT OR OTHER INTELLECTUAL PROPERTY RIGHT.
+UNLESS EXPRESSLY APPROVED IN WRITING BY TWO AUTHORIZED ST REPRESENTATIVES, ST PRODUCTS ARE NOT
+RECOMMENDED, AUTHORIZED OR WARRANTED FOR USE IN MILITARY, AIR CRAFT, SPACE, LIFE SAVING, OR LIFE SUSTAINING
+APPLICATIONS, NOR IN PRODUCTS OR SYSTEMS WHERE FAILURE OR MALFUNCTION MAY RESULT IN PERSONAL INJURY,
+DEATH, OR SEVERE PROPERTY OR ENVIRONMENTAL DAMAGE. ST PRODUCTS WHICH ARE NOT SPECIFIED AS "AUTOMOTIVE
+GRADE" MAY ONLY BE USED IN AUTOMOTIVE APPLICATIONS AT USER’S OWN RISK.
+
+
+Resale of ST products with provisions different from the statements and/or technical features set forth in this document shall immediately void
+any warranty granted by ST for the ST product or service described herein and shall not create or extend in any manner whatsoever, any
+liability of ST.
+
+
+                          ST and the ST logo are trademarks or registered trademarks of ST in various countries.
+
+                         Information in this document supersedes and replaces all information previously supplied.
+
+         The ST logo is a registered trademark of STMicroelectronics. All other names are the property of their respective owners.
+
+
+                                               © 2012 STMicroelectronics - All rights reserved
+
+
+                                                   STMicroelectronics group of companies
+ Australia - Belgium - Brazil - Canada - China - Czech Republic - Finland - France - Germany - Hong Kong - India - Israel - Italy - Japan -
+   Malaysia - Malta - Morocco - Philippines - Singapore - Spain - Sweden - Switzerland - United Kingdom - United States of America
+                                                                 www.st.com
+
+
+
+
+32/32                                                     Doc ID 022911 Rev 1
+
