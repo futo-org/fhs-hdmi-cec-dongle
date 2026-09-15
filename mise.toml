@@ -1,53 +1,64 @@
-# STM32 Nucleo-F072RB tasks.
-# Toolchain lives in the STM32Cube VS Code bundles, not on PATH.
-# tools/cube-env.sh resolves the newest bundle of each tool and execs the command.
+# STM32 Nucleo-F072RB. Toolchain is mise-managed: no STM32Cube VS Code bundles.
+
+[tools]
+cmake = "4.4.3"
+ninja = "1.13.2"
+gcc-arm-none-eabi = "13.3.Rel1"
+"ubi:probe-rs/probe-rs" = { version = "latest", exe = "probe-rs" }
 
 [env]
 PRESET = "{{ env.PRESET | default(value='Debug') }}"
-CUBE_BUNDLE_PATH = "{{env.HOME}}/.local/share/stm32cube/bundles"
+CHIP = "STM32F072RB"
+ELF = "build/{{ env.PRESET | default(value='Debug') }}/fhs-hdmi-controller.elf"
 
 [tasks.configure]
 description = "CMake configure (PRESET, default Debug)"
-run = "./tools/cube-env.sh cmake --preset $PRESET"
+run = "cmake --preset $PRESET"
 
 [tasks.build]
 description = "Build firmware"
 depends = ["configure"]
-run = "./tools/cube-env.sh cmake --build --preset $PRESET"
+run = "cmake --build --preset $PRESET"
 
 [tasks.load]
 description = "Build, flash and reset the board"
 depends = ["build"]
-run = "./tools/cube-env.sh STM32_Programmer_CLI -c port=SWD mode=UR -w build/$PRESET/fhs-hdmi-controller.elf -v -rst"
+run = ["probe-rs download --chip $CHIP $ELF", "probe-rs reset --chip $CHIP"]
 
 [tasks.connect]
-description = "Probe the target over SWD (read-only check)"
-run = "./tools/cube-env.sh STM32_Programmer_CLI -c port=SWD mode=UR"
+description = "List probes + read DBGMCU_IDCODE, read-only"
+run = ["probe-rs list", "probe-rs read --chip $CHIP b32 0x40015800 1"]
+
+[tasks.verify]
+description = "Check flash contents match the built ELF"
+depends = ["build"]
+run = "probe-rs verify --chip $CHIP $ELF"
 
 [tasks.erase]
 description = "Mass-erase the flash"
-run = "./tools/cube-env.sh STM32_Programmer_CLI -c port=SWD mode=UR -e all"
+run = "probe-rs erase --chip $CHIP"
+
+[tasks.reset]
+description = "Reset the target"
+run = "probe-rs reset --chip $CHIP"
 
 [tasks.size]
 description = "Section sizes of the built ELF"
 depends = ["build"]
-run = "./tools/cube-env.sh arm-none-eabi-size -Ax build/$PRESET/fhs-hdmi-controller.elf"
+run = "arm-none-eabi-size -Ax $ELF"
 
 [tasks.clean]
 description = "Delete the build tree"
 run = "rm -rf build"
 
 [tasks.gdbserver]
-description = "Start ST-LINK GDB server on :61234 (for a manual gdb / the Attach launch config)"
-run = """./tools/cube-env.sh sh -c 'ST-LINK_gdbserver -cp "$(dirname "$(command -v STM32_Programmer_CLI)")" -d -t -k -p 61234'"""
+description = "probe-rs GDB server on :1337"
+run = "probe-rs gdb --chip $CHIP"
 
 [tasks.gdb]
-description = "Attach arm-none-eabi-gdb to a running gdbserver"
-run = "./tools/cube-env.sh arm-none-eabi-gdb build/$PRESET/fhs-hdmi-controller.elf -ex 'target extended-remote :61234'"
-
-[tasks.kill-probe]
-description = "Kill a stale gdbserver that is holding the ST-LINK"
-run = "pkill -f ST-LINK_gdbserver || true"
+description = "Attach gdb to a running gdbserver (needs ncurses-compat-libs)"
+depends = ["build"]
+run = "arm-none-eabi-gdb $ELF -ex 'target extended-remote :1337'"
 
 [tasks.monitor]
 description = "Open the ST-LINK virtual COM port at 115200"

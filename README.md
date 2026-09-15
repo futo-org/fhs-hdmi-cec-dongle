@@ -7,9 +7,11 @@ CEC not started yet.
 
 ## Quick start
 
+    mise install            # one-time: fetch the pinned toolchain
     mise run build          # configure + build
     mise run load           # build, flash, reset
-    mise run connect        # probe the target, read-only
+    mise run connect        # list probes + read DBGMCU_IDCODE, read-only
+    mise run verify         # flash contents vs built ELF
     mise tasks              # full list
 
 `PRESET=Release mise run load` for the Release preset.
@@ -29,10 +31,9 @@ Probe enumerates (`0483:374b`) but has no udev rule → `DEV_CONNECT_ERR`.
 |---|---|
 | `Src/`, `Inc/` | Firmware, one concern per module: `main.c` wiring, `board.h` pin map, `system_clock.c`, `led.c`, `uart.c` (bytes), `console.c` (line editing), `shell.c`, `stm32f0xx_it.c`. `Inc/stm32f0xx_hal_conf.h` selects which HAL modules build |
 | `Drivers/` | Vendored CMSIS Core + CMSIS device F0 + STM32F0xx HAL driver |
-| `cmake/` | Extension-managed build config. Only `files.cmake` is yours to edit |
-| `tools/cube-env.sh` | Puts the STM32Cube bundle toolchain on PATH and execs a command |
+| `cmake/` | Generated build config. Only `files.cmake` is yours to edit |
 | `tools/49-stlink.rules` | udev rules for the probe |
-| `mise.toml` | build / load / connect / size / erase / gdbserver / … tasks |
+| `mise.toml` | toolchain versions **and** tasks: build / load / connect / size / erase / gdbserver / … |
 | `docs/` | ST PDFs + `.txt` pdftotext dumps (grep these) |
 | `ref/` | Reference CEC code, not compiled |
 
@@ -82,16 +83,37 @@ Defines: `STM32F072xB`, `USE_HAL_DRIVER`.
 
 ## Toolchain
 
-Everything lives in the STM32Cube VS Code extension bundles under
-`~/.local/share/stm32cube/bundles`, **not** in system packages — nothing is on your PATH.
-`tools/cube-env.sh` resolves the newest bundle of each tool, so bundle upgrades don't
-break the tasks.
+Everything is pinned in `mise.toml` and installed by mise. No STM32Cube VS Code bundles,
+no system packages, nothing to put on PATH by hand:
 
-    ./tools/cube-env.sh cmake --preset Debug            # configure (once)
-    ./tools/cube-env.sh cmake --build --preset Debug    # build
-    ./tools/cube-env.sh STM32_Programmer_CLI -c port=SWD mode=UR \
-        -w build/Debug/fhs-hdmi-controller.elf -v -rst  # flash + reset
-    ./tools/cube-env.sh                                  # shell with PATH set
+    [tools]
+    cmake             = "4.4.3"
+    ninja             = "1.13.2"
+    gcc-arm-none-eabi = "13.3.Rel1"
+    "ubi:probe-rs/probe-rs" = { version = "latest", exe = "probe-rs" }
+
+    mise install      # one command, from a fresh clone
+
+Flashing is `probe-rs`, not STM32CubeProgrammer. Chip id is `STM32F072RB` (`$CHIP` in
+`mise.toml`); `probe-rs chip list` has the rest. Raw equivalents of the tasks:
+
+    cmake --preset Debug
+    cmake --build --preset Debug
+    probe-rs download --chip STM32F072RB build/Debug/fhs-hdmi-controller.elf
+    probe-rs reset --chip STM32F072RB
+
+**`arm-none-eabi-gdb` needs one system package.** The Arm toolchain links against
+ncurses 5, which Fedora 43 does not ship by default:
+
+    arm-none-eabi-gdb: error while loading shared libraries: libncursesw.so.5
+    sudo dnf install ncurses-compat-libs
+
+Only `mise run gdb` needs it; build and flash do not.
+
+Still from the STM32Cube extension, both editor-side only, neither needed to build or
+flash: the clangd language server (`cube starm-clangd`, pointed at the mise gcc via
+`.vscode/settings.json`) and the `F5` ST-Link debug adapter. To drop the latter too,
+run `mise run gdbserver` (probe-rs, port 1337) and attach with `mise run gdb`.
 
 ## In VS Code
 
@@ -100,8 +122,8 @@ break the tasks.
 - Peripheral registers: STM32Cube registers view (SVD wired in `launch.json`)
 - The attach config only connects to an `ST-LINK_gdbserver` you already started (port 61234,
   `mise run gdbserver`); it does not launch one.
-- Build/debug go through `.vscode/tasks.json` + `tools/cube-env.sh`, **not** the CMake Tools
-  extension. CMake Tools keeps its active preset in workspace state with no settings.json
+- Build/debug go through `.vscode/tasks.json`, which just calls `mise run …`, **not** the
+  CMake Tools extension. CMake Tools keeps its active preset in workspace state with no settings.json
   equivalent in v1.24, so a fresh clone gives "No configure preset is active". Pick one from
   the status bar if you want its UI; nothing here depends on it.
 
