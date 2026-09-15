@@ -28,8 +28,13 @@ uint32_t cec_err_count(void);
 
 uint8_t cec_get_address(void);
 
-/* 0..15, or CEC_ADDR_NONE. Returns 0 if rejected. */
+/* 0..15, or CEC_ADDR_NONE. Returns 0 if rejected. Cancels allocation. */
 int cec_set_address(uint8_t logical);
+
+/* Claim the first free Playback address (4, 8, 11) by polling. Runs at boot
+   on its own; this restarts it. Result is printed from cec_task. */
+void cec_allocate_address(void);
+int cec_allocating(void);
 
 /* Re-init the peripheral, keeping address and tolerance. The only way out of
    a transmit wedged by lost arbitration. */
@@ -63,5 +68,19 @@ void cec_bus_resume(void);
 /* Queue one frame. payload is opcode + operands, NULL/0 sends a bare header
    (a poll). Returns 0 if the peripheral is busy or the arguments are bad. */
 int cec_send(uint8_t dest, const uint8_t *payload, size_t len);
+
+/* One Touch Play: wake the TV and switch it to our port. <Active Source>
+   follows once <Image View On> is acknowledged. Returns 0 if busy. */
+int cec_one_touch_play(void);
+
+/* <Standby> to the TV. */
+int cec_standby(void);
+
+/* Whether the TV is showing our port, as far as the bus has told us. */
+int cec_is_active_source(void);
+
+/* <Give Device Power Status> to the TV; the answer prints as "tv is on",
+   "standby", "turning on" or "turning off". Returns 0 if busy. */
+int cec_tv_query_power(void);
 
 #endif

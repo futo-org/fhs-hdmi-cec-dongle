@@ -113,6 +113,22 @@ static volatile uint32_t ev_count;
 
 static uint8_t own_addr = CEC_ADDR_NONE;
 
+/* Logical address allocation, CEC 1.4 §10.2.1. A Playback Device tries 4,
+   8 and 11 in that order, polling each: an acknowledged poll means the
+   address is taken, silence means it is free and ours. Runs at boot, a
+   second in so the bus and the TV have settled, and on `cec addr auto`. */
+static const uint8_t playback_addrs[] = { 0x4, 0x8, 0xB };
+static uint8_t alloc_idx;
+static uint8_t alloc_active;
+static uint8_t alloc_polling;       /* the frame in flight is our poll */
+static uint8_t alloc_tries;         /* per candidate, for bus errors */
+static uint32_t alloc_next_ms;
+static uint8_t report_due;          /* <Report Physical Address> after claim */
+
+#define ALLOC_BOOT_DELAY_MS 1000U
+#define ALLOC_RETRY_MS      300U
+#define ALLOC_TRIES_MAX     3U
+
 /* Device identity. There is no EDID reader here, so the physical address is
    declared rather than discovered; the TV's <Routing Change> says the port
    this cable is in is 1.0.0.0. */
@@ -122,6 +138,25 @@ static uint8_t own_addr = CEC_ADDR_NONE;
 
 static const char osd_name[] = "FUTO Home";
 static int auto_respond = 1;
+static int active_source = 0;   /* the TV is showing our port, as far as we know */
+
+/* Power commands to the TV, with retry. LG refuses directed frames for a
+   while after it starts a power transition: <Image View On> sent soon after
+   <Standby> comes back "tx no ack", and a second try a few seconds later is
+   accepted. So the two power commands keep trying, a second apart, for as
+   long as the TV takes to settle. */
+static uint8_t pwr_opcode;      /* 0x04 or 0x36, 0 when idle */
+static uint8_t pwr_in_flight;
+static uint8_t pwr_attempts;
+static uint8_t pwr_retry_due;
+static uint32_t pwr_retry_at_ms;
+
+static uint8_t tv_query_open;   /* <Give Device Power Status> sent, answer due */
+static uint32_t tv_query_deadline_ms;
+
+#define TV_QUERY_TIMEOUT_MS 2000U
+#define PWR_RETRY_MS     1000U
+#define PWR_ATTEMPTS_MAX 30U    /* longer than any transition seen */
 static int show_all = 0;        /* print frames for other devices too */
 
 /* Directed opcodes whose reply is mandatory within 1 s (CEC 1.4 §7.4 and
@@ -194,6 +229,9 @@ void cec_init(void)
         Error_Handler();
     }
     cec_rx_rearm();
+
+    cec_allocate_address();
+    alloc_next_ms = HAL_GetTick() + ALLOC_BOOT_DELAY_MS;
 }
 
 uint8_t cec_get_address(void)
@@ -216,6 +254,7 @@ int cec_set_address(uint8_t logical)
     if (HAL_CEC_SetDeviceAddress(&cec, oar) != HAL_OK) {
         return 0;
     }
+    alloc_active = 0;               /* a hand-set address wins */
 
     /* SetDeviceAddress pokes CFGR directly and leaves Init.OwnAddress stale,
        so a later re-init would silently drop the address. Keep them together. */
@@ -294,12 +333,12 @@ int cec_get_show_all(void)
     return show_all;
 }
 
-int cec_send(uint8_t dest, const uint8_t *payload, size_t len)
+static int send_from(uint8_t initiator, uint8_t dest, const uint8_t *payload,
+                     size_t len)
 {
     CEC_TypeDef *r = BOARD_CEC;
 
-    /* The header carries the initiator, so an address is not optional. */
-    if (own_addr == CEC_ADDR_NONE || dest > CEC_ADDR_BROADCAST) {
+    if (initiator > CEC_ADDR_BROADCAST || dest > CEC_ADDR_BROADCAST) {
         return 0;
     }
     if (len > CEC_FRAME_MAX - 1U) {
@@ -336,9 +375,65 @@ int cec_send(uint8_t dest, const uint8_t *payload, size_t len)
     if (len == 0U) {
         r->CR |= CEC_CR_TXEOM;
     }
-    r->TXDR = (uint32_t)((uint32_t)own_addr << 4) | dest;
+    r->TXDR = (uint32_t)((uint32_t)initiator << 4) | dest;
     r->CR |= CEC_CR_TXSOM;
     return 1;
+}
+
+int cec_send(uint8_t dest, const uint8_t *payload, size_t len)
+{
+    /* The header carries the initiator, so an address is not optional. */
+    if (own_addr == CEC_ADDR_NONE) {
+        return 0;
+    }
+    return send_from(own_addr, dest, payload, len);
+}
+
+void cec_allocate_address(void)
+{
+    alloc_idx = 0;
+    alloc_tries = 0;
+    alloc_polling = 0;
+    alloc_active = 1;
+    alloc_next_ms = HAL_GetTick();
+}
+
+int cec_allocating(void)
+{
+    return alloc_active;
+}
+
+/* Poll the next candidate. The poll goes out from the address it asks
+   about, so nothing here needs an own address yet. */
+static void alloc_step(void)
+{
+    uint8_t cand;
+
+    if (alloc_idx >= sizeof(playback_addrs)) {
+        alloc_active = 0;
+        printf("cec: no free playback address (4, 8, b all taken), "
+               "use 'cec addr <n>'\n");
+        return;
+    }
+    cand = playback_addrs[alloc_idx];
+    if (send_from(cand, cand, NULL, 0)) {
+        alloc_polling = 1;
+    } else {
+        alloc_next_ms = HAL_GetTick() + ALLOC_RETRY_MS;
+    }
+}
+
+static void alloc_claim(uint8_t addr)
+{
+    alloc_active = 0;
+    if (!cec_set_address(addr)) {
+        printf("cec: could not set address %x\n", addr);
+        return;
+    }
+    printf("cec: logical address %x (playback), physical %x.%x.%x.%x\n", addr,
+           (CEC_PHYS_ADDR >> 12) & 0xFU, (CEC_PHYS_ADDR >> 8) & 0xFU,
+           (CEC_PHYS_ADDR >> 4) & 0xFU, CEC_PHYS_ADDR & 0xFU);
+    report_due = 1;                 /* tell the TV we exist */
 }
 
 /* --- reporting, main loop only --- */
@@ -353,6 +448,18 @@ static const struct {
     { 0x32, "Set Menu Language" },
     { 0x36, "Standby" },
     { 0x46, "Give OSD Name" },
+    { 0x70, "System Audio Mode Request" },
+    { 0x72, "Set System Audio Mode" },
+    { 0x7D, "Give System Audio Mode Status" },
+    { 0x7E, "System Audio Mode Status" },
+    { 0x80, "Routing Change" },
+    { 0x81, "Routing Information" },
+    { 0x86, "Set Stream Path" },
+    { 0x89, "Vendor Command" },
+    { 0x9D, "Inactive Source" },
+    { 0xA0, "Vendor Command With ID" },
+    { 0xA3, "Report Short Audio Descriptor" },
+    { 0xA4, "Request Short Audio Descriptor" },
     { 0x47, "Set OSD Name" },
     { 0x82, "Active Source" },
     { 0x83, "Give Physical Address" },
@@ -426,6 +533,79 @@ static void print_frame(const frame_t *f)
     }
 }
 
+/* <Active Source> is how a source claims the screen: the TV routes to the
+   physical address in it. Always broadcast. */
+static int send_active_source(void)
+{
+    uint8_t msg[3] = { 0x82, (uint8_t)(CEC_PHYS_ADDR >> 8), (uint8_t)CEC_PHYS_ADDR };
+
+    if (cec_send(CEC_ADDR_BROADCAST, msg, sizeof(msg))) {
+        active_source = 1;
+        printf("         -> active source %x.%x.%x.%x\n",
+               (CEC_PHYS_ADDR >> 12) & 0xFU, (CEC_PHYS_ADDR >> 8) & 0xFU,
+               (CEC_PHYS_ADDR >> 4) & 0xFU, CEC_PHYS_ADDR & 0xFU);
+        return 1;
+    }
+    return 0;
+}
+
+static int power_command(uint8_t opcode)
+{
+    if (!cec_send(0x0, &opcode, 1)) {
+        return 0;
+    }
+    pwr_opcode = opcode;
+    pwr_in_flight = 1;
+    pwr_attempts = 1;
+    pwr_retry_due = 0;
+    return 1;
+}
+
+/* CEC 1.4 §13.1 One Touch Play: <Image View On> wakes the TV, <Active Source>
+   makes it switch to our port. The second goes out when the first has been
+   acknowledged; a TV in standby ignores broadcasts until it is awake, so the
+   responder below repeats it when the TV asks with <Set Stream Path>. */
+int cec_one_touch_play(void)
+{
+    return power_command(0x04);
+}
+
+int cec_standby(void)
+{
+    active_source = 0;
+    return power_command(0x36);
+}
+
+int cec_is_active_source(void)
+{
+    return active_source;
+}
+
+/* Ask the TV for its power state. The answer, <Report Power Status>, is
+   decoded and printed by cec_task when it arrives. */
+int cec_tv_query_power(void)
+{
+    uint8_t q = 0x8F;
+
+    if (!cec_send(0x0, &q, 1)) {
+        return 0;
+    }
+    tv_query_open = 1;
+    tv_query_deadline_ms = HAL_GetTick() + TV_QUERY_TIMEOUT_MS;
+    return 1;
+}
+
+static const char *power_state_name(uint8_t st)
+{
+    switch (st) {
+    case 0x00: return "on";
+    case 0x01: return "standby";
+    case 0x02: return "turning on";
+    case 0x03: return "turning off";
+    default:   return "unknown";
+    }
+}
+
 /* CEC opcodes we answer. A follower that never reports its physical address
    stays unregistered, and an unregistered device's commands get acknowledged
    and then ignored. */
@@ -443,8 +623,48 @@ static void respond(const frame_t *f)
     initiator = f->data[0] >> 4;
     dest = f->data[0] & 0x0FU;
 
+    /* Routing, all broadcast. The TV asks "who is at this address" and the
+       device there answers <Active Source>; anyone else claiming the screen
+       means we are no longer on it. */
+    if (dest == CEC_ADDR_BROADCAST) {
+        uint16_t phys = 0xFFFFU;
+
+        switch (f->data[1]) {
+        case 0x85:                  /* Request Active Source */
+            if (active_source) {
+                send_active_source();
+            }
+            break;
+        case 0x86:                  /* Set Stream Path [phys] */
+            if (f->len >= 4U) {
+                phys = (uint16_t)((f->data[2] << 8) | f->data[3]);
+            }
+            break;
+        case 0x80:                  /* Routing Change [old][new] */
+            if (f->len >= 6U) {
+                phys = (uint16_t)((f->data[4] << 8) | f->data[5]);
+            }
+            break;
+        case 0x82:                  /* Active Source [phys], someone else's */
+            if (f->len >= 4U && initiator != own_addr) {
+                active_source = 0;
+            }
+            break;
+        default:
+            break;
+        }
+        if (phys != 0xFFFFU) {
+            if (phys == CEC_PHYS_ADDR) {
+                send_active_source();
+            } else {
+                active_source = 0;
+            }
+        }
+        return;
+    }
+
     if (dest != own_addr) {
-        return;                     /* broadcast, or someone else's business */
+        return;                     /* someone else's business */
     }
 
     tx_is_reply = 1;
@@ -528,18 +748,78 @@ void cec_task(void)
         tx_pending = 0;
         tx_retry_left = 0;          /* got through, nothing to retry */
         tx_is_reply = 0;
-        printf("[%8lu] tx ok\n", (unsigned long)HAL_GetTick());
+        if (alloc_polling) {        /* acknowledged: someone lives there */
+            alloc_polling = 0;
+            printf("cec: address %x is taken\n", playback_addrs[alloc_idx]);
+            alloc_idx++;
+            alloc_tries = 0;
+            alloc_next_ms = HAL_GetTick();
+        } else {
+            printf("[%8lu] tx ok\n", (unsigned long)HAL_GetTick());
+        }
+
+        if (pwr_in_flight) {        /* TV acknowledged the power command */
+            pwr_in_flight = 0;
+            if (pwr_attempts > 1U) {
+                printf("         tv accepted it on attempt %u\n", pwr_attempts);
+            }
+            if (pwr_opcode == 0x04U) {
+                send_active_source();
+            }
+            pwr_opcode = 0;
+        }
     }
 
     bits = tx_error;
     if (bits != 0U) {
         tx_error = 0;
         tx_pending = 0;
-        printf("[%8lu] ", (unsigned long)HAL_GetTick());
+
+        if (alloc_polling) {
+            alloc_polling = 0;
+            if ((bits & CEC_FLAG_TXACKE) != 0U) {
+                alloc_claim(playback_addrs[alloc_idx]);     /* silence: free */
+            } else if (++alloc_tries < ALLOC_TRIES_MAX) {
+                alloc_next_ms = HAL_GetTick() + ALLOC_RETRY_MS;
+            } else {
+                printf("cec: bus error polling %x, skipping it\n",
+                       playback_addrs[alloc_idx]);
+                alloc_idx++;
+                alloc_tries = 0;
+                alloc_next_ms = HAL_GetTick();
+            }
+            bits = 0;
+        }
+
+        if (bits != 0U) {
+            printf("[%8lu] ", (unsigned long)HAL_GetTick());
+        }
+        if (tv_query_open && bits != 0U) {
+            tv_query_open = 0;      /* the failure line says why */
+        }
+
+        if (pwr_in_flight && (bits & CEC_FLAG_TXACKE) != 0U &&
+            pwr_attempts < PWR_ATTEMPTS_MAX) {
+            /* Mid-transition refusal. Try again in a moment. */
+            pwr_in_flight = 0;
+            pwr_retry_due = 1;
+            pwr_retry_at_ms = HAL_GetTick() + PWR_RETRY_MS;
+            printf("tv not ready (no ack), retry %u/%u in %u ms\n",
+                   pwr_attempts + 1U, PWR_ATTEMPTS_MAX, PWR_RETRY_MS);
+            bits = 0;
+        } else if (pwr_in_flight) {
+            printf("tv refused %02x %u times, giving up: ",
+                   pwr_opcode, pwr_attempts);
+            pwr_in_flight = 0;
+            pwr_opcode = 0;
+        }
+
         /* On a broadcast the ack slot is inverted: silence accepts, and a low
            is a follower objecting. Calling that "no ack" reads backwards. */
-        if (tx_dest == CEC_ADDR_BROADCAST &&
-            (bits & CEC_FLAG_TXACKE) != 0U) {
+        if (bits == 0U) {
+            /* already reported above */
+        } else if (tx_dest == CEC_ADDR_BROADCAST &&
+                   (bits & CEC_FLAG_TXACKE) != 0U) {
             print_errors("tx rejected by a follower:", bits);
         } else {
             print_errors("tx failed:", bits);
@@ -552,6 +832,40 @@ void cec_task(void)
             tx_retry_left = 0;
         }
         tx_is_reply = 0;
+    }
+
+    if (tv_query_open &&
+        (HAL_GetTick() - tv_query_deadline_ms) < 0x80000000UL) {
+        tv_query_open = 0;
+        printf("         tv did not answer in %u ms\n",
+               (unsigned)TV_QUERY_TIMEOUT_MS);
+    }
+
+    if (alloc_active && !alloc_polling && !tx_pending &&
+        (HAL_GetTick() - alloc_next_ms) < 0x80000000UL) {
+        alloc_step();
+    }
+
+    if (report_due && !tx_pending && own_addr != CEC_ADDR_NONE) {
+        uint8_t msg[4] = { 0x84, (uint8_t)(CEC_PHYS_ADDR >> 8),
+                           (uint8_t)CEC_PHYS_ADDR, CEC_DEVICE_TYPE };
+
+        report_due = 0;
+        if (cec_send(CEC_ADDR_BROADCAST, msg, sizeof(msg))) {
+            printf("         -> report physical address\n");
+        }
+    }
+
+    if (pwr_retry_due && !tx_pending &&
+        (HAL_GetTick() - pwr_retry_at_ms) < 0x80000000UL) {
+        pwr_retry_due = 0;
+        pwr_attempts++;
+        if (cec_send(0x0, &pwr_opcode, 1)) {
+            pwr_in_flight = 1;
+        } else {
+            printf("power command retry could not be queued\n");
+            pwr_opcode = 0;
+        }
     }
 
     if (tx_retry_left > 0U && !tx_pending &&
@@ -573,6 +887,10 @@ void cec_task(void)
 
         if (show_all || dest == own_addr || dest == CEC_ADDR_BROADCAST) {
             print_frame(f);
+        }
+        if (f->len >= 3U && (f->data[0] >> 4) == 0x0U && f->data[1] == 0x90U) {
+            printf("         tv is %s\n", power_state_name(f->data[2]));
+            tv_query_open = 0;
         }
         respond(f);
         rx_tail = (uint8_t)((rx_tail + 1U) % RX_QUEUE);
@@ -909,6 +1227,9 @@ static void cec_rx_rearm(void)
     tx_busy = 0;
     tx_pending = 0;
     reply_wait = 0;
+    pwr_in_flight = 0;
+    pwr_retry_due = 0;
+    alloc_polling = 0;
     BOARD_CEC->ISR = CEC_FLAG_ALL;
 }
 

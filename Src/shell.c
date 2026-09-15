@@ -98,10 +98,12 @@ static void cmd_status(const char *args)
     printf("pclk1   %lu Hz\n", (unsigned long)HAL_RCC_GetPCLK1Freq());
     printf("uptime  %lu ms\n", (unsigned long)HAL_GetTick());
     printf("led     %s\n", led_mode_name(led_get_mode()));
-    printf("cec     %s, addr %c, rx %lu, tx %lu, err %lu\n",
+    printf("cec     %s, addr %c, %s, rx %lu, tx %lu, err %lu\n",
            cec_state_name(),
            cec_get_address() == CEC_ADDR_NONE
-               ? '-' : "0123456789abcdef"[cec_get_address()],
+               ? (cec_allocating() ? '?' : '-')
+               : "0123456789abcdef"[cec_get_address()],
+           cec_is_active_source() ? "active source" : "not active",
            (unsigned long)cec_rx_count(),
            (unsigned long)cec_tx_count(),
            (unsigned long)cec_err_count());
@@ -171,7 +173,10 @@ int shell_take_hex_byte(const char **cursor, uint8_t *out)
 
 static void cec_usage(void)
 {
-    printf("usage: cec addr <0-f|none>\n");
+    printf("usage: cec addr <0-f|none|auto>   auto = poll 4,8,b (done at boot)\n");
+    printf("       cec on                   TV on and switched to our port\n");
+    printf("       cec off                  TV standby\n");
+    printf("       cec tv status            ask the TV: on, standby, turning on/off\n");
     printf("       cec tol <std|ext>        rx timing tolerance\n");
     printf("       cec reset                re-init the peripheral\n");
     printf("       cec dump                 registers and isr counters\n");
@@ -199,6 +204,11 @@ static void cmd_cec(const char *args)
             printf("addr none\n");
             return;
         }
+        if (shell_match_word(&cursor, "auto")) {
+            cec_allocate_address();
+            printf("polling 4, 8, b...\n");
+            return;
+        }
         if (!shell_take_nibble(&cursor, &addr) || *cursor != '\0') {
             cec_usage();
             return;
@@ -213,6 +223,39 @@ static void cmd_cec(const char *args)
 
     if (shell_match_word(&cursor, "dump")) {
         cec_dump();
+        return;
+    }
+
+    if (shell_match_word(&cursor, "on") && *cursor == '\0') {
+        if (!cec_one_touch_play()) {
+            printf("busy, or no own address (cec addr <n>)\n");
+        }
+        return;
+    }
+
+    if (shell_match_word(&cursor, "tv")) {
+        int ok;
+
+        if (shell_match_word(&cursor, "status") && *cursor == '\0') {
+            ok = cec_tv_query_power();
+        } else if (shell_match_word(&cursor, "on") && *cursor == '\0') {
+            ok = cec_one_touch_play();
+        } else if (shell_match_word(&cursor, "off") && *cursor == '\0') {
+            ok = cec_standby();
+        } else {
+            cec_usage();
+            return;
+        }
+        if (!ok) {
+            printf("busy, or no own address (cec addr <n>)\n");
+        }
+        return;
+    }
+
+    if (shell_match_word(&cursor, "off") && *cursor == '\0') {
+        if (!cec_standby()) {
+            printf("busy, or no own address (cec addr <n>)\n");
+        }
         return;
     }
 

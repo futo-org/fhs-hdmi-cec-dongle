@@ -250,8 +250,19 @@ that matters; it proves the board can assert the bus, not just listen to it.
 
 ### Talk to the TV
 
+The board allocates its own logical address a second after boot, the way CEC 1.4 §10.2.1
+says a Playback Device should: it polls 4, then 8, then 11, and claims the first one nobody
+acknowledges, then broadcasts `<Report Physical Address>` so the TV lists it:
+
 ```
-cec addr 4              claim logical address 4 (Playback 1)
+cec: logical address 4 (playback), physical 1.0.0.0
+         -> report physical address
+```
+
+`cec addr <n>` still overrides it, `cec addr auto` runs it again, and `status` shows `addr ?`
+while it is polling. To check the link by hand:
+
+```
 cec send 0              poll the TV -> "tx ok" means it acknowledged
 ```
 
@@ -328,10 +339,64 @@ addr 4
 [  79022] rx 0->4 90 01  <Report Power Status>
 ```
 
+### Turn the TV on and switch to this port
+
+```
+cec on                  One Touch Play: <Image View On>, then <Active Source> 1.0.0.0
+cec off                 <Standby>
+cec tv status           <Give Device Power Status> -> "tv is on|standby|turning on|turning off"
+```
+
+`cec tv on` and `cec tv off` are the same as `cec on` and `cec off`. Every
+`<Report Power Status>` from the TV is decoded the same way, asked for or not, so the
+`tv is turning off` line shows up on its own after `cec off`.
+
+`cec on` wakes the TV and makes it switch to the port this cable is in, in one go. What it
+does on the bus, CEC 1.4 §13.1: `4->0 04` (Image View On), and once the TV acknowledges
+that, `4->f 82 10 00` (Active Source, our physical address). The TV then asks around while
+it wakes and the board keeps claiming the screen:
+
+```
+cec on
+> tx ok                                   <Image View On> acknowledged
+         -> active source 1.0.0.0
+  tx ok
+  rx 0->f 80 00 00 10 00  <Routing Change>          TV moving to 1.0.0.0
+         -> active source 1.0.0.0
+  rx 0->f 86 10 00        <Set Stream Path>         "device at 1.0.0.0, confirm"
+         -> active source 1.0.0.0
+  rx 0->f 80 10 00 30 00  <Routing Change>          TV briefly back on its last input
+  rx 0->f 80 30 00 10 00  <Routing Change>          ...and onto ours for good
+         -> active source 1.0.0.0
+```
+
+**Right after `cec off`, the TV refuses.** LG NACKs directed frames while it is still
+going down (and, for a while, while coming up). `cec on` and `cec off` retry every second
+for up to 30 s and say so:
+
+```
+cec on
+> [ 176209] tv not ready (no ack), retry 2/30 in 1000 ms
+  [ 177300] tv not ready (no ack), retry 3/30 in 1000 ms
+  [ 178391] tx ok
+           tv accepted it on attempt 3
+           -> active source 1.0.0.0
+```
+
+A bare `cec send 0 04` does not retry; that is what the raw command is for.
+
+`status` then reports `active source`. The board answers `<Set Stream Path>` and
+`<Routing Change>` naming its address, and `<Request Active Source>` while it holds the
+screen, so the TV's own input menu and the soundbar's routing traffic keep working. Another
+device's `<Active Source>` clears the flag. `cec send 0 04` alone still just wakes the TV.
+
 ### Commands
 
 ```
-cec addr <0-f|none>       own logical address; transmit needs one
+cec addr <0-f|none|auto>  own logical address; allocated at boot, this overrides
+cec on                    TV on and switched to our port (One Touch Play)
+cec off                   TV standby
+cec tv status|on|off      power state query, or the two above
 cec send <dest> [hex...]  one frame. No payload = a poll
 cec auto <on|off>         answer the TV's interrogation (default on)
 cec listen <own|all>      print only frames to us and broadcasts (default), or every frame
@@ -396,7 +461,8 @@ low, a 1 is 600 us low, bit period 2400 us) and whether anyone pulls the ack slo
   responses are retried once after 150 ms (`-> retry 84`).
 - The physical address is hardcoded to `1.0.0.0` in `Src/cec.c`. There is no EDID reader,
   so it is declared rather than discovered. Change it if the cable moves to another port
-- Logical address allocation is not implemented; `cec addr` is manual
+- Logical address allocation only knows the Playback set (4, 8, 11) and the physical
+  address is declared, not read from EDID, so it is a Playback Device at 1.0.0.0 or nothing
 
 
 ## Reference code (`ref/`, not compiled)
