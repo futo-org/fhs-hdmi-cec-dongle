@@ -176,6 +176,8 @@ Missing: UM1724 (Nucleo-64 board manual) — st.com was unreachable from this ma
 
 ## HDMI-CEC bench
 
+One-page map of the CEC code for newcomers: `docs/cec-implementation.md`.
+
 ### What you need
 
 | Item | Note |
@@ -255,27 +257,50 @@ says a Playback Device should: it polls 4, then 8, then 11, and claims the first
 acknowledges, then broadcasts `<Report Physical Address>` so the TV lists it:
 
 ```
-cec: logical address 4 (playback), physical 1.0.0.0
-         -> report physical address
+[   1.002]   i logical address 4 (us), physical 1.0.0.0
+[   1.130] TX [4f 84 10 00 04]  reply ok
+              us    -> all    84 10 00 04       Report Physical Address 1.0.0.0 Playback
 ```
 
 `cec addr <n>` still overrides it, `cec addr auto` runs it again, and `status` shows `addr ?`
 while it is polling. To check the link by hand:
 
 ```
-cec send 0              poll the TV -> "tx ok" means it acknowledged
+cec send 0              poll the TV -> a line ending in "ok" means it acknowledged
 ```
 
-`tx ok` on that poll is the milestone: the TV pulled the ack bit down, so the link works
-both ways. Then wait a few seconds. The TV interrogates the new device and the board
-answers automatically:
+```
+[  15.098] TX [40]  ok
+              us    -> TV                       poll
+```
+
+That `ok` is the milestone: the TV pulled the ack bit down, so the link works both ways.
+Then wait a few seconds. The TV interrogates the new device and the board answers on its
+own; every frame is one line, both directions, raw bytes then meaning:
 
 ```
-rx 0->4 83  <Give Physical Address>    -> reply 84
-rx 0->4 46  <Give OSD Name>            -> reply 47
-rx 0->4 8c  <Give Device Vendor ID>    -> reply 87
-rx 0->4 8f  <Give Device Power Status> -> reply 90
+[  15.453] RX [04 83]
+              TV    -> us     83                 Give Physical Address
+[  15.592] TX [4f 84 10 00 04]  reply ok
+              us    -> all    84 10 00 04        Report Physical Address 1.0.0.0 Playback
+[  15.681] RX [04 46]
+              TV    -> us     46                 Give OSD Name
+[  15.964] TX [40 47 46 55 54 4f 20 48 6f 6d 65]  reply ok
+              us    -> TV     47 46 55 54 4f ..  Set OSD Name "FUTO Home"
+[  16.390] RX [04 8f]
+              TV    -> us     8f                 Give Device Power Status
+[  16.481] TX [40 90 00]  reply ok
+              us    -> TV     90 00              Report Power Status: on
 ```
+
+Console legend. Each frame is two lines. `RX [..]` / `TX [..]` is exactly what went over
+the wire, header byte first (`04` = initiator 0 to destination 4), with the result of our
+own transmits; `cec raw off` folds it into the second line. The indented line is the
+meaning: `from -> to` by name (`TV`, `us`, `Audio` = the soundbar, `all` =
+broadcast), the bytes after the header, the meaning, and on our own frames the result:
+`ok`, `reply ok`, `NO ACK, nobody answered`, `REJECTED by a follower` (broadcast),
+`FAILED, collision on the line`. Lines marked `i` are information, `~` a retry in progress,
+`!` a warning.
 
 **Let that finish before sending commands.** A device that has not reported its physical
 address is not in the TV's device list, and the TV will acknowledge your commands and then
@@ -298,10 +323,13 @@ its new state unprompted:
 
 ```
 > cec send 0 04
-[  325960] tx ok
-[  326853] rx 0->f 90 00   <Report Power Status>    <- it woke
+[ 325.960] TX [40 04]  ok
+              us    -> TV     04                Image View On
+[ 326.853] RX [0f 90 00]
+              TV    -> all    90 00             Report Power Status: on   <- it woke
 > cec send 0 04
-[  329995] tx failed: tx no ack (0x1000)            <- 4 s later, mid-transition
+[ 329.995] TX [40 04]  NO ACK, nobody answered       <- 4 s later, mid-transition
+              us    -> TV     04                Image View On
 ```
 
 This is the single most confusing behaviour on the bench, because a burst of commands makes
@@ -319,24 +347,32 @@ cec send 0 8c           <Give Device Vendor ID>    -> 87 + 3-byte OUI
 A full session, from a cold board:
 
 ```
-> cec addr 4
-addr 4
-> cec send 0
-[  15098] tx ok
-[  15453] rx 0->4 83  <Give Physical Address>
-         -> reply 84
-[  15592] tx ok
-[  15681] rx 0->4 46  <Give OSD Name>
-         -> reply 47
-[  15964] tx ok
-> cec send 0 8f
-[  71741] tx ok
-[  71853] rx 0->4 90 00  <Report Power Status>
-> cec send 0 36
-[  74676] tx ok
-> cec send 0 8f
-[  78910] tx ok
-[  79022] rx 0->4 90 01  <Report Power Status>
+[   1.002]   i logical address 4 (us), physical 1.0.0.0
+[   1.130] TX [4f 84 10 00 04]  reply ok
+              us    -> all    84 10 00 04       Report Physical Address 1.0.0.0 Playback
+[   3.453] RX [04 83]
+              TV    -> us     83                Give Physical Address
+[   3.592] TX [4f 84 10 00 04]  reply ok
+              us    -> all    84 10 00 04       Report Physical Address 1.0.0.0 Playback
+[   3.681] RX [04 46]
+              TV    -> us     46                Give OSD Name
+[   3.964] TX [40 47 46 55 54 4f 20 48 6f 6d 65]  reply ok
+              us    -> TV     47 46 55 54 4f 20 48 6f 6d 65 Set OSD Name "FUTO Home"
+> cec tv status
+[  71.741] TX [40 8f]  ok
+              us    -> TV     8f                Give Device Power Status
+[  71.853] RX [04 90 00]
+              TV    -> us     90 00             Report Power Status: on
+> cec off
+[  74.676] TX [40 36]  ok
+              us    -> TV     36                Standby
+[  75.301] RX [0f 90 03]
+              TV    -> all    90 03             Report Power Status: turning off
+> cec tv status
+[  78.910] TX [40 8f]  ok
+              us    -> TV     8f                Give Device Power Status
+[  79.022] RX [04 90 01]
+              TV    -> us     90 01             Report Power Status: standby
 ```
 
 ### Turn the TV on and switch to this port
@@ -344,14 +380,14 @@ addr 4
 ```
 cec on                  One Touch Play: <Image View On>, then <Active Source> 1.0.0.0
 cec off                 <Standby>
-cec tv status           <Give Device Power Status> -> "tv is on|standby|turning on|turning off"
+cec tv status           <Give Device Power Status> -> "Report Power Status: on|standby|turning on|turning off"
 ```
 
 ```
 cec vol up [n]          Volume Up key, n times (User Control Pressed 44 41 / Released 45)
 cec vol down [n]        Volume Down
 cec vol mute            Mute toggle
-cec vol status          Give Audio Status -> "audio: volume 34, muted"
+cec vol status          Give Audio Status -> "Report Audio Status: volume 34, muted"
 ```
 
 Volume keys go to whoever owns the volume. When the soundbar broadcasts
@@ -360,8 +396,8 @@ address 5 and `cec vol status` gets a real answer; otherwise they go to the TV, 
 not report a volume level. The command echoes which one it picked.
 
 `cec tv on` and `cec tv off` are the same as `cec on` and `cec off`. Every
-`<Report Power Status>` from the TV is decoded the same way, asked for or not, so the
-`tv is turning off` line shows up on its own after `cec off`.
+`<Report Power Status>` from the TV is decoded the same way, asked for or not, so
+`Report Power Status: turning off` shows up on its own after `cec off`.
 
 `cec on` wakes the TV and makes it switch to the port this cable is in, in one go. What it
 does on the bus, CEC 1.4 §13.1: `4->0 04` (Image View On), and once the TV acknowledges
@@ -369,17 +405,25 @@ that, `4->f 82 10 00` (Active Source, our physical address). The TV then asks ar
 it wakes and the board keeps claiming the screen:
 
 ```
-cec on
-> tx ok                                   <Image View On> acknowledged
-         -> active source 1.0.0.0
-  tx ok
-  rx 0->f 80 00 00 10 00  <Routing Change>          TV moving to 1.0.0.0
-         -> active source 1.0.0.0
-  rx 0->f 86 10 00        <Set Stream Path>         "device at 1.0.0.0, confirm"
-         -> active source 1.0.0.0
-  rx 0->f 80 10 00 30 00  <Routing Change>          TV briefly back on its last input
-  rx 0->f 80 30 00 10 00  <Routing Change>          ...and onto ours for good
-         -> active source 1.0.0.0
+> cec on
+[  37.089] TX [40 04]  ok
+              us    -> TV     04                Image View On
+[  37.207] TX [4f 82 10 00]  reply ok
+              us    -> all    82 10 00          Active Source 1.0.0.0
+[  38.788] RX [0f 80 00 00 10 00]
+              TV    -> all    80 00 00 10 00    Routing Change 0.0.0.0 -> 1.0.0.0
+[  38.904] TX [4f 82 10 00]  reply ok
+              us    -> all    82 10 00          Active Source 1.0.0.0
+[  39.201] RX [0f 86 10 00]
+              TV    -> all    86 10 00          Set Stream Path 1.0.0.0
+[  39.368] TX [4f 82 10 00]  reply ok
+              us    -> all    82 10 00          Active Source 1.0.0.0
+[  40.325] RX [0f 80 10 00 30 00]
+              TV    -> all    80 10 00 30 00    Routing Change 1.0.0.0 -> 3.0.0.0   <- last input
+[  41.402] RX [0f 80 30 00 10 00]
+              TV    -> all    80 30 00 10 00    Routing Change 3.0.0.0 -> 1.0.0.0   <- ours, for good
+[  41.520] TX [4f 82 10 00]  reply ok
+              us    -> all    82 10 00          Active Source 1.0.0.0
 ```
 
 **Right after `cec off`, the TV refuses.** LG NACKs directed frames while it is still
@@ -387,12 +431,14 @@ going down (and, for a while, while coming up). `cec on` and `cec off` retry eve
 for up to 30 s and say so:
 
 ```
-cec on
-> [ 176209] tv not ready (no ack), retry 2/30 in 1000 ms
-  [ 177300] tv not ready (no ack), retry 3/30 in 1000 ms
-  [ 178391] tx ok
-           tv accepted it on attempt 3
-           -> active source 1.0.0.0
+> cec on
+[ 176.209]   ~ TV not ready (no ack), retry 2/30 in 1000 ms
+[ 177.300]   ~ TV not ready (no ack), retry 3/30 in 1000 ms
+[ 178.391] TX [40 04]  ok
+              us    -> TV     04                Image View On
+[ 178.392]   i TV accepted it on attempt 3
+[ 178.510] TX [4f 82 10 00]  reply ok
+              us    -> all    82 10 00          Active Source 1.0.0.0
 ```
 
 A bare `cec send 0 04` does not retry; that is what the raw command is for.
@@ -414,6 +460,7 @@ cec send <dest> [hex...]  one frame. No payload = a poll
 cec auto <on|off>         answer the TV's interrogation (default on)
 cec listen <own|all>      print only frames to us and broadcasts (default), or every frame
 cec listen reduced        hardware address filter; wedges the receiver, see below
+cec raw <on|off>          raw wire bytes line before each frame (default on)
 cec tol <std|ext>         rx timing tolerance
 cec reset                 re-init the peripheral
 cec dump                  registers, transmit/receive state, ISR counters and event log
@@ -453,8 +500,8 @@ low, a 1 is 600 us low, bit period 2400 us) and whether anyone pulls the ack slo
     a fault, so that is now the default. Whatever the silicon does with a directed frame it
     is meant to ignore, it does not do reliably. A watchdog covers the remaining unknowns:
     if the TV acknowledges a question it must answer (`8f`, `8c`, `83`, `46`, `9f`, `91`) and
-    nothing at all arrives for 1.5 s, the peripheral is re-initialised and
-    `rx watchdog: acked query, no reply` is printed. `cec dump` counts them.
+    nothing at all arrives for 1.5 s, the peripheral is re-initialised and a
+    `! watchdog: query acked, nothing heard` line is printed. `cec dump` counts them.
   - **`rx overrun (0x4)` was never an overrun.** In reduced mode, a directed frame for
     someone else that nobody acknowledges (the TV polling the sleeping soundbar) raises
     RXOVR with no byte delivered and RXDR still holding our previous frame's last byte.
@@ -471,7 +518,7 @@ low, a 1 is 600 us low, bit period 2400 us) and whether anyone pulls the ack slo
   configuration.
 - **The TV tramples the first reply after a wake.** It asks `83` and starts its next frame
   without waiting, on top of our `84`, which shows as `tx rejected by a follower`. Auto
-  responses are retried once after 150 ms (`-> retry 84`).
+  responses are retried once after 150 ms (`~ retrying Report Physical Address`).
 - The physical address is hardcoded to `1.0.0.0` in `Src/cec.c`. There is no EDID reader,
   so it is declared rather than discovered. Change it if the cable moves to another port
 - Logical address allocation only knows the Playback set (4, 8, 11) and the physical

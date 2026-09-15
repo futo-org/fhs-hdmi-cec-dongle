@@ -2,6 +2,7 @@
 #include "board.h"
 #include "main.h"
 
+#include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -173,6 +174,7 @@ static uint32_t tv_query_deadline_ms;
 #define PWR_RETRY_MS     1000U
 #define PWR_ATTEMPTS_MAX 30U    /* longer than any transition seen */
 static int show_all = 0;        /* print frames for other devices too */
+static int show_raw = 1;        /* raw frame line before each decoded one */
 
 /* Directed opcodes whose reply is mandatory within 1 s (CEC 1.4 §7.4 and
    table 8). If one of these is acknowledged and nothing at all arrives
@@ -196,6 +198,12 @@ static const uint8_t query_opcodes[] = {
 static void cec_msp_init(void);
 static void cec_pin_to_af(void);
 static void cec_rx_rearm(void);
+static const char *addr_name(uint8_t la);
+static void note(const char *mark, const char *fmt, ...)
+    __attribute__((format(printf, 2, 3)));
+#define info(...)  note("i", __VA_ARGS__)
+#define warn(...)  note("!", __VA_ARGS__)
+#define step(...)  note("~", __VA_ARGS__)
 
 #define CEC_RX_ERRORS (CEC_FLAG_RXOVR | CEC_FLAG_BRE | CEC_FLAG_SBPE | \
                        CEC_FLAG_LBPE | CEC_FLAG_RXACKE)
@@ -343,6 +351,16 @@ void cec_set_show_all(int on)
     show_all = on;
 }
 
+void cec_set_show_raw(int on)
+{
+    show_raw = on;
+}
+
+int cec_get_show_raw(void)
+{
+    return show_raw;
+}
+
 int cec_get_show_all(void)
 {
     return show_all;
@@ -426,8 +444,7 @@ static void alloc_step(void)
 
     if (alloc_idx >= sizeof(playback_addrs)) {
         alloc_active = 0;
-        printf("cec: no free playback address (4, 8, b all taken), "
-               "use 'cec addr <n>'\n");
+        warn("no free playback address (4, 8, b all taken), use 'cec addr <n>'");
         return;
     }
     cand = playback_addrs[alloc_idx];
@@ -442,12 +459,12 @@ static void alloc_claim(uint8_t addr)
 {
     alloc_active = 0;
     if (!cec_set_address(addr)) {
-        printf("cec: could not set address %x\n", addr);
+        warn("could not set address %x", addr);
         return;
     }
-    printf("cec: logical address %x (playback), physical %x.%x.%x.%x\n", addr,
-           (CEC_PHYS_ADDR >> 12) & 0xFU, (CEC_PHYS_ADDR >> 8) & 0xFU,
-           (CEC_PHYS_ADDR >> 4) & 0xFU, CEC_PHYS_ADDR & 0xFU);
+    info("logical address %x (%s), physical %x.%x.%x.%x", addr, addr_name(addr),
+         (CEC_PHYS_ADDR >> 12) & 0xFU, (CEC_PHYS_ADDR >> 8) & 0xFU,
+         (CEC_PHYS_ADDR >> 4) & 0xFU, CEC_PHYS_ADDR & 0xFU);
     report_due = 1;                 /* tell the TV we exist */
 }
 
@@ -534,22 +551,255 @@ static void print_errors(const char *what, uint32_t bits)
     printf(" (0x%lx)\n", (unsigned long)bits);
 }
 
+/* --- console layout ---
+ *
+ *   [  41.073] TV    -> us     83              Give Physical Address
+ *   [  41.080] us    -> all    84 10 00 04     Report Physical Address 1.0.0.0 Playback   reply ok
+ *   [  41.138]   ! rx errors x3: bit rising (0x8)
+ *   [  42.000]   i logical address 4 (playback), physical 1.0.0.0
+ *
+ * Time in seconds, who to whom by name, raw bytes, then the meaning. */
+
+static void stamp(uint32_t ms)
+{
+    printf("[%4lu.%03lu] ", (unsigned long)(ms / 1000U), (unsigned long)(ms % 1000U));
+}
+
+static void note(const char *mark, const char *fmt, ...)
+{
+    va_list ap;
+
+    stamp(HAL_GetTick());
+    printf("  %s ", mark);
+    va_start(ap, fmt);
+    vprintf(fmt, ap);
+    va_end(ap);
+    printf("\n");
+}
+
+static const char *addr_name(uint8_t la)
+{
+    static const char *const names[16] = {
+        "TV", "Rec1", "Rec2", "Tuner1", "Play1", "Audio", "Tuner2", "Tuner3",
+        "Play2", "Rec3", "Tuner4", "Play3", "Rsvd", "Rsvd", "Free", "all",
+    };
+
+    if (la == own_addr) {
+        return "us";
+    }
+    return names[la & 0x0FU];
+}
+
+static void print_pa(uint8_t hi, uint8_t lo)
+{
+    printf("%x.%x.%x.%x", hi >> 4, hi & 0x0FU, lo >> 4, lo & 0x0FU);
+}
+
+static const char *power_state_name(uint8_t st)
+{
+    switch (st) {
+    case 0x00: return "on";
+    case 0x01: return "standby";
+    case 0x02: return "turning on";
+    case 0x03: return "turning off";
+    default:   return "unknown";
+    }
+}
+
+static const char *device_type_name(uint8_t t)
+{
+    switch (t) {
+    case 0: return "TV";
+    case 1: return "Recorder";
+    case 3: return "Tuner";
+    case 4: return "Playback";
+    case 5: return "Audio System";
+    case 6: return "Switch";
+    default: return "?";
+    }
+}
+
+static const char *ui_key_name(uint8_t k)
+{
+    switch (k) {
+    case 0x00: return "Select";
+    case 0x01: return "Up";
+    case 0x02: return "Down";
+    case 0x03: return "Left";
+    case 0x04: return "Right";
+    case 0x09: return "Root Menu";
+    case 0x0D: return "Exit";
+    case 0x40: return "Power";
+    case 0x41: return "Volume Up";
+    case 0x42: return "Volume Down";
+    case 0x43: return "Mute";
+    case 0x44: return "Play";
+    case 0x45: return "Stop";
+    case 0x46: return "Pause";
+    case 0x6C: return "Power Off";
+    case 0x6D: return "Power On";
+    default:   return "key";
+    }
+}
+
+static const char *abort_reason_name(uint8_t r)
+{
+    switch (r) {
+    case 0: return "unrecognised opcode";
+    case 1: return "not in correct mode";
+    case 2: return "cannot provide source";
+    case 3: return "invalid operand";
+    case 4: return "refused";
+    case 5: return "unable to determine";
+    default: return "?";
+    }
+}
+
+/* What the operands say, in words. p[0] is the opcode. */
+static void print_meaning(const uint8_t *p, uint8_t len)
+{
+    if (len == 0U) {
+        printf("poll");
+        return;
+    }
+    printf("%s", opcode_name(p[0]));
+
+    switch (p[0]) {
+    case 0x82:                      /* Active Source */
+    case 0x86:                      /* Set Stream Path */
+    case 0x9D:                      /* Inactive Source */
+        if (len >= 3U) {
+            printf(" ");
+            print_pa(p[1], p[2]);
+        }
+        break;
+    case 0x84:                      /* Report Physical Address */
+        if (len >= 4U) {
+            printf(" ");
+            print_pa(p[1], p[2]);
+            printf(" %s", device_type_name(p[3]));
+        }
+        break;
+    case 0x80:                      /* Routing Change old -> new */
+        if (len >= 5U) {
+            printf(" ");
+            print_pa(p[1], p[2]);
+            printf(" -> ");
+            print_pa(p[3], p[4]);
+        }
+        break;
+    case 0x81:                      /* Routing Information */
+        if (len >= 3U) {
+            printf(" ");
+            print_pa(p[1], p[2]);
+        }
+        break;
+    case 0x90:                      /* Report Power Status */
+        if (len >= 2U) {
+            printf(": %s", power_state_name(p[1]));
+        }
+        break;
+    case 0x9E:                      /* CEC Version */
+        if (len >= 2U) {
+            printf(" %s", p[1] == 0x04 ? "1.3a" : p[1] == 0x05 ? "1.4" :
+                          p[1] == 0x06 ? "2.0" : "?");
+        }
+        break;
+    case 0x47:                      /* Set OSD Name */
+    case 0x32:                      /* Set Menu Language */
+        printf(" \"");
+        for (uint8_t i = 1; i < len; i++) {
+            printf("%c", (p[i] >= 0x20U && p[i] < 0x7FU) ? p[i] : '.');
+        }
+        printf("\"");
+        break;
+    case 0x87:                      /* Device Vendor ID */
+        if (len >= 4U) {
+            printf(" %02x:%02x:%02x", p[1], p[2], p[3]);
+        }
+        break;
+    case 0x44:                      /* User Control Pressed */
+        if (len >= 2U) {
+            printf(": %s (%02x)", ui_key_name(p[1]), p[1]);
+        }
+        break;
+    case 0x72:                      /* Set System Audio Mode */
+    case 0x7E:                      /* System Audio Mode Status */
+        if (len >= 2U) {
+            printf(": %s", p[1] ? "on" : "off");
+        }
+        break;
+    case 0x7A:                      /* Report Audio Status */
+        if (len >= 2U) {
+            printf(": volume %u%s", p[1] & 0x7FU, (p[1] & 0x80U) ? ", muted" : "");
+        }
+        break;
+    case 0x00:                      /* Feature Abort */
+        if (len >= 3U) {
+            printf(": %s, %s", opcode_name(p[1]), abort_reason_name(p[2]));
+        }
+        break;
+    default:
+        break;
+    }
+}
+
+/* One frame, both directions. payload = opcode + operands. With show_raw:
+ *
+ *   [  15.453] RX [04 83]
+ *                TV    -> us     83                 Give Physical Address
+ *   [  15.592] TX [4f 84 10 00 04]  reply ok
+ *                us    -> all    84 10 00 04        Report Physical Address 1.0.0.0 Playback
+ *
+ * The raw line is the wire, header first, with the result of our own
+ * transmit; the indented line is what it means. Without show_raw the two
+ * collapse into one. */
+static void print_line(uint32_t ms, uint8_t from, uint8_t to,
+                       const uint8_t *payload, uint8_t len, const char *tag)
+{
+    int col = 0;
+    int ours = (from == own_addr);
+
+    if (show_raw) {
+        stamp(ms);
+        printf("%s [%02x", ours ? "TX" : "RX", (unsigned)((from << 4) | to));
+        for (uint8_t i = 0; i < len; i++) {
+            printf(" %02x", payload[i]);
+        }
+        printf("]");
+        if (tag != NULL && *tag != '\0') {
+            printf("  %s", tag);
+        }
+        printf("\n");
+        printf("              ");          /* under the bytes, past the stamp */
+    } else {
+        stamp(ms);
+    }
+
+    printf("%-5s -> %-5s  ", addr_name(from), addr_name(to));
+    for (uint8_t i = 0; i < len; i++) {
+        col += printf("%02x ", payload[i]);
+    }
+    while (col < 18) {              /* six bytes wide before the meaning */
+        col += printf(" ");
+    }
+    print_meaning(payload, len);
+    if (!show_raw && tag != NULL && *tag != '\0') {
+        printf("   %s", tag);
+    }
+    printf("\n");
+}
+
 static void print_frame(const frame_t *f)
 {
-    /* Byte 0 is the header: initiator in the high nibble, destination in the
-       low one. The payload starts at byte 1. */
-    printf("[%8lu] rx %x->%x", (unsigned long)f->ms,
-           f->data[0] >> 4, f->data[0] & 0x0FU);
+    print_line(f->ms, f->data[0] >> 4, f->data[0] & 0x0FU,
+               &f->data[1], (uint8_t)(f->len - 1U), NULL);
+}
 
-    for (uint8_t i = 1; i < f->len; i++) {
-        printf(" %02x", f->data[i]);
-    }
-
-    if (f->len < 2U) {
-        printf("  <poll>\n");
-    } else {
-        printf("  <%s>\n", opcode_name(f->data[1]));
-    }
+/* The frame the transmitter last sent, for its result line. */
+static void print_tx(const char *tag)
+{
+    print_line(HAL_GetTick(), own_addr, tx_dest, tx_buf, tx_len, tag);
 }
 
 /* <Active Source> is how a source claims the screen: the TV routes to the
@@ -560,9 +810,7 @@ static int send_active_source(void)
 
     if (cec_send(CEC_ADDR_BROADCAST, msg, sizeof(msg))) {
         active_source = 1;
-        printf("         -> active source %x.%x.%x.%x\n",
-               (CEC_PHYS_ADDR >> 12) & 0xFU, (CEC_PHYS_ADDR >> 8) & 0xFU,
-               (CEC_PHYS_ADDR >> 4) & 0xFU, CEC_PHYS_ADDR & 0xFU);
+        tx_is_reply = 1;            /* tagged "reply" on its result line */
         return 1;
     }
     return 0;
@@ -648,17 +896,6 @@ int cec_system_audio_mode(void)
     return sys_audio_mode;
 }
 
-static const char *power_state_name(uint8_t st)
-{
-    switch (st) {
-    case 0x00: return "on";
-    case 0x01: return "standby";
-    case 0x02: return "turning on";
-    case 0x03: return "turning off";
-    default:   return "unknown";
-    }
-}
-
 /* CEC opcodes we answer. A follower that never reports its physical address
    stays unregistered, and an unregistered device's commands get acknowledged
    and then ignored. */
@@ -720,7 +957,6 @@ static void respond(const frame_t *f)
         return;                     /* someone else's business */
     }
 
-    tx_is_reply = 1;
     switch (f->data[1]) {
     case 0x83:                      /* Give Physical Address */
         reply[n++] = 0x84;          /* Report Physical Address, must broadcast */
@@ -759,9 +995,9 @@ static void respond(const frame_t *f)
         break;
 
     default:
-        tx_is_reply = 0;
         return;
     }
+    tx_is_reply = tx_pending;       /* only if the send was queued */
 
     /* Keep a copy: tx_buf is the transmitter's and a retry re-sends it, but
        a user frame could be queued in between. */
@@ -770,8 +1006,6 @@ static void respond(const frame_t *f)
     tx_retry_dest = (f->data[1] == 0x83 || f->data[1] == 0x8C)
                         ? CEC_ADDR_BROADCAST : initiator;
     tx_retry_left = 1;
-
-    printf("         -> reply %02x\n", reply[0]);
 }
 
 void cec_task(void)
@@ -779,7 +1013,7 @@ void cec_task(void)
     uint32_t bits;
 
     if (rx_dropped > 0U) {
-        printf("rx queue full, %lu frames dropped\n", (unsigned long)rx_dropped);
+        warn("rx queue full, %lu frames dropped", (unsigned long)rx_dropped);
         rx_dropped = 0;
     }
 
@@ -792,7 +1026,8 @@ void cec_task(void)
         rx_error = 0;
         rx_error_count = 0;
         rx_error_reported_ms = HAL_GetTick();
-        printf("rx error x%lu:", (unsigned long)n);
+        stamp(HAL_GetTick());
+        printf("  ! rx errors x%lu:", (unsigned long)n);
         print_errors("", bits);
     }
 
@@ -800,16 +1035,16 @@ void cec_task(void)
         tx_complete = 0;
         tx_pending = 0;
         tx_retry_left = 0;          /* got through, nothing to retry */
-        tx_is_reply = 0;
         if (alloc_polling) {        /* acknowledged: someone lives there */
             alloc_polling = 0;
-            printf("cec: address %x is taken\n", playback_addrs[alloc_idx]);
+            info("address %x is taken", playback_addrs[alloc_idx]);
             alloc_idx++;
             alloc_tries = 0;
             alloc_next_ms = HAL_GetTick();
         } else {
-            printf("[%8lu] tx ok\n", (unsigned long)HAL_GetTick());
+            print_tx(tx_is_reply ? "reply ok" : "ok");
         }
+        tx_is_reply = 0;
 
         if (vol_stage == 1U) {      /* press acknowledged */
             vol_stage = 2;
@@ -817,14 +1052,14 @@ void cec_task(void)
             vol_left--;
             vol_stage = 0;          /* next press, if any are left */
             if (vol_left == 0U) {
-                printf("         volume key done\n");
+                info("volume keys done");
             }
         }
 
         if (pwr_in_flight) {        /* TV acknowledged the power command */
             pwr_in_flight = 0;
             if (pwr_attempts > 1U) {
-                printf("         tv accepted it on attempt %u\n", pwr_attempts);
+                info("TV accepted it on attempt %u", pwr_attempts);
             }
             if (pwr_opcode == 0x04U) {
                 send_active_source();
@@ -845,8 +1080,7 @@ void cec_task(void)
             } else if (++alloc_tries < ALLOC_TRIES_MAX) {
                 alloc_next_ms = HAL_GetTick() + ALLOC_RETRY_MS;
             } else {
-                printf("cec: bus error polling %x, skipping it\n",
-                       playback_addrs[alloc_idx]);
+                warn("bus error polling %x, skipping it", playback_addrs[alloc_idx]);
                 alloc_idx++;
                 alloc_tries = 0;
                 alloc_next_ms = HAL_GetTick();
@@ -854,16 +1088,12 @@ void cec_task(void)
             bits = 0;
         }
 
-        if (bits != 0U) {
-            printf("[%8lu] ", (unsigned long)HAL_GetTick());
-        }
         if (tv_query_open && bits != 0U) {
             tv_query_open = 0;      /* the failure line says why */
         }
         if (vol_stage != 0U && bits != 0U) {
             vol_stage = 0;
             vol_left = 0;
-            printf("volume key to %x failed: ", volume_target());
         }
 
         if (pwr_in_flight && (bits & CEC_FLAG_TXACKE) != 0U &&
@@ -872,25 +1102,28 @@ void cec_task(void)
             pwr_in_flight = 0;
             pwr_retry_due = 1;
             pwr_retry_at_ms = HAL_GetTick() + PWR_RETRY_MS;
-            printf("tv not ready (no ack), retry %u/%u in %u ms\n",
-                   pwr_attempts + 1U, PWR_ATTEMPTS_MAX, PWR_RETRY_MS);
+            step("TV not ready (no ack), retry %u/%u in %u ms",
+                 pwr_attempts + 1U, PWR_ATTEMPTS_MAX, PWR_RETRY_MS);
             bits = 0;
         } else if (pwr_in_flight) {
-            printf("tv refused %02x %u times, giving up: ",
-                   pwr_opcode, pwr_attempts);
+            warn("TV refused %s %u times, giving up",
+                 opcode_name(pwr_opcode), pwr_attempts);
             pwr_in_flight = 0;
             pwr_opcode = 0;
         }
 
-        /* On a broadcast the ack slot is inverted: silence accepts, and a low
-           is a follower objecting. Calling that "no ack" reads backwards. */
-        if (bits == 0U) {
-            /* already reported above */
-        } else if (tx_dest == CEC_ADDR_BROADCAST &&
-                   (bits & CEC_FLAG_TXACKE) != 0U) {
-            print_errors("tx rejected by a follower:", bits);
-        } else {
-            print_errors("tx failed:", bits);
+        if (bits != 0U) {
+            /* On a broadcast the ack slot is inverted: silence accepts, and
+               a low is a follower objecting. "no ack" would read backwards. */
+            const char *why =
+                (tx_dest == CEC_ADDR_BROADCAST && bits == CEC_FLAG_TXACKE)
+                    ? "REJECTED by a follower"
+                : (bits == CEC_FLAG_TXACKE) ? "NO ACK, nobody answered"
+                : (bits & CEC_FLAG_TXERR)   ? "FAILED, collision on the line"
+                : (bits & CEC_FLAG_TXUDR)   ? "FAILED, tx underrun"
+                                            : "FAILED";
+
+            print_tx(why);
         }
 
         if (tx_is_reply && tx_retry_left > 0U &&
@@ -922,8 +1155,7 @@ void cec_task(void)
     if (tv_query_open &&
         (HAL_GetTick() - tv_query_deadline_ms) < 0x80000000UL) {
         tv_query_open = 0;
-        printf("         tv did not answer in %u ms\n",
-               (unsigned)TV_QUERY_TIMEOUT_MS);
+        warn("TV did not answer in %u ms", (unsigned)TV_QUERY_TIMEOUT_MS);
     }
 
     if (alloc_active && !alloc_polling && !tx_pending &&
@@ -937,7 +1169,7 @@ void cec_task(void)
 
         report_due = 0;
         if (cec_send(CEC_ADDR_BROADCAST, msg, sizeof(msg))) {
-            printf("         -> report physical address\n");
+            tx_is_reply = 1;
         }
     }
 
@@ -948,7 +1180,7 @@ void cec_task(void)
         if (cec_send(0x0, &pwr_opcode, 1)) {
             pwr_in_flight = 1;
         } else {
-            printf("power command retry could not be queued\n");
+            warn("power command retry could not be queued");
             pwr_opcode = 0;
         }
     }
@@ -958,7 +1190,7 @@ void cec_task(void)
         tx_retry_left--;
         tx_is_reply = 1;
         if (cec_send(tx_retry_dest, tx_retry_buf, tx_retry_len)) {
-            printf("         -> retry %02x\n", tx_retry_buf[0]);
+            step("retrying %s", opcode_name(tx_retry_buf[0]));
         } else {
             tx_is_reply = 0;
         }
@@ -974,16 +1206,11 @@ void cec_task(void)
             print_frame(f);
         }
         if (f->len >= 3U && (f->data[0] >> 4) == 0x0U && f->data[1] == 0x90U) {
-            printf("         tv is %s\n", power_state_name(f->data[2]));
-            tv_query_open = 0;
+            tv_query_open = 0;      /* answered; the line above says what */
         }
         if (f->len >= 3U && (f->data[1] == 0x72U || f->data[1] == 0x7EU)) {
             /* Set System Audio Mode / System Audio Mode Status */
             sys_audio_mode = f->data[2] ? 1U : 0U;
-        }
-        if (f->len >= 3U && f->data[1] == 0x7AU) {
-            printf("         audio: volume %u%s\n", f->data[2] & 0x7FU,
-                   (f->data[2] & 0x80U) ? ", muted" : "");
         }
         respond(f);
         rx_tail = (uint8_t)((rx_tail + 1U) % RX_QUEUE);
@@ -995,8 +1222,8 @@ void cec_task(void)
     if (reply_wait && (HAL_GetTick() - reply_deadline_ms) < 0x80000000UL) {
         reply_wait = 0;
         stat_watchdog++;
-        printf("rx watchdog: acked query, no reply in %u ms, re-initialising\n",
-               (unsigned)REPLY_TIMEOUT_MS);
+        warn("watchdog: query acked, nothing heard for %u ms, re-initialising receiver",
+             (unsigned)REPLY_TIMEOUT_MS);
         cec_recover();
     }
 
@@ -1010,9 +1237,9 @@ void cec_task(void)
     /* Should not happen any more; kept as the last line of defence. */
     if (rx_overrun_streak >= RX_OVERRUN_STREAK_MAX &&
         (HAL_GetTick() - rx_last_frame_ms) > RX_STUCK_SILENCE_MS) {
-        printf("rx stuck: %lu overruns, no frame for %lu ms, re-initialising\n",
-               (unsigned long)rx_overrun_streak,
-               (unsigned long)(HAL_GetTick() - rx_last_frame_ms));
+        warn("rx stuck: %lu overruns, no frame for %lu ms, re-initialising",
+             (unsigned long)rx_overrun_streak,
+             (unsigned long)(HAL_GetTick() - rx_last_frame_ms));
         cec_recover();
     }
 
@@ -1021,8 +1248,8 @@ void cec_task(void)
        transmitter wedged some other way, would leave us busy forever. */
     if (tx_pending && (HAL_GetTick() - tx_started_ms) > TX_TIMEOUT_MS) {
         errors++;
-        printf("tx timeout after %u ms, state %s, recovering\n",
-               (unsigned)TX_TIMEOUT_MS, cec_state_name());
+        warn("tx timeout after %u ms, state %s, recovering",
+             (unsigned)TX_TIMEOUT_MS, cec_state_name());
         /* Leaving it wedged means the hardware keeps retrying and jams the
            bus low, which then corrupts every frame anyone else sends. */
         cec_recover();

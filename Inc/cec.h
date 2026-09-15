@@ -55,6 +55,11 @@ int cec_get_listen_all(void);
 void cec_set_show_all(int on);
 int cec_get_show_all(void);
 
+/* Console: raw wire bytes (header included) on a line before each decoded
+   frame. On by default. */
+void cec_set_show_raw(int on);
+int cec_get_show_raw(void);
+
 /* Answer the standard interrogation opcodes automatically. On by default;
    a device the TV cannot identify does not get to control it. */
 void cec_set_auto_respond(int on);

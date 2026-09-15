@@ -185,6 +185,7 @@ static void cec_usage(void)
     printf("       cec dump                 registers and isr counters\n");
     printf("       cec listen <own|all>     print own+broadcast, or every frame\n");
     printf("       cec listen reduced       hardware address filter (wedges, see README)\n");
+    printf("       cec raw <on|off>         raw wire bytes before each frame (default on)\n");
     printf("       cec auto <on|off>        auto-answer TV queries\n");
     printf("       cec send <dest 0-f> [hex bytes]\n");
     printf("  e.g. cec send f 36        broadcast Standby\n");
@@ -226,6 +227,22 @@ static void cmd_cec(const char *args)
 
     if (shell_match_word(&cursor, "dump")) {
         cec_dump();
+        return;
+    }
+
+    if (shell_match_word(&cursor, "raw")) {
+        int on;
+
+        if (shell_match_word(&cursor, "on")) {
+            on = 1;
+        } else if (shell_match_word(&cursor, "off")) {
+            on = 0;
+        } else {
+            cec_usage();
+            return;
+        }
+        cec_set_show_raw(on);
+        printf("raw %s\n", on ? "on" : "off");
         return;
     }
 
