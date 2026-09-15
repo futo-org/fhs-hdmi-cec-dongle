@@ -27,7 +27,7 @@ Probe enumerates (`0483:374b`) but has no udev rule → `DEV_CONNECT_ERR`.
 
 | Path | What |
 |---|---|
-| `Src/`, `Inc/` | Firmware: `main.c` (shell + LED), `uart.c` (USART2 + printf glue). `Inc/stm32f0xx_hal_conf.h` selects which HAL modules build |
+| `Src/`, `Inc/` | Firmware, one concern per module: `main.c` wiring, `board.h` pin map, `system_clock.c`, `led.c`, `uart.c` (bytes), `console.c` (line editing), `shell.c`, `stm32f0xx_it.c`. `Inc/stm32f0xx_hal_conf.h` selects which HAL modules build |
 | `Drivers/` | Vendored CMSIS Core + CMSIS device F0 + STM32F0xx HAL driver |
 | `cmake/` | Extension-managed build config. Only `files.cmake` is yours to edit |
 | `tools/cube-env.sh` | Puts the STM32Cube bundle toolchain on PATH and execs a command |
@@ -40,20 +40,26 @@ Probe enumerates (`0483:374b`) but has no udev rule → `DEV_CONNECT_ERR`.
 
 USART2 on PA2/PA3 → ST-LINK VCP → `/dev/ttyACM0`, **115200 8N1**. `printf` goes out here
 (`syscall.c` already routes `_write`/`_read` to `__io_putchar`/`__io_getchar`, which
-`Src/uart.c` defines), and typed lines come back through `uart_take_line()`.
+`Src/uart.c` defines), and typed lines come back through `console_take_line()`.
 
     mise run monitor          # minicom at 115200
-    # or, scripted:
+    # or, scripted -- keep ONE fd open for the whole session:
     stty -F /dev/ttyACM0 115200 raw -echo -hupcl
-    cat /dev/ttyACM0 &
-    printf 'status\r' > /dev/ttyACM0
+    exec 3<>/dev/ttyACM0
+    cat <&3 &
+    sleep 3                   # the open toggles DTR/RTS; let the VCP settle
+    printf 'status\r' >&3
 
-Commands: `help`, `led on|off|blink`, `status`, `reset`. Add your own in
-`handle_command()` in `Src/main.c`.
+Commands: `help`, `led on|off|blink`, `status`, `reset`. Add your own as a row in the
+`commands[]` table in `Src/shell.c` plus one handler.
 
 The RX ISR only pushes bytes into a ring buffer — echo and line editing happen in
-`uart_take_line()` from the main loop. Echoing inside the ISR blocks for a full character
+`Src/console.c` from the main loop. Echoing inside the ISR blocks for a full character
 time at 115200 and drops the next incoming byte (`status` arrives as `statu`).
+
+Re-opening `/dev/ttyACM0` per command (`printf ... > /dev/ttyACM0` in a loop) toggles
+DTR/RTS on the ST-LINK VCP each time and drops bytes in flight — output comes back with
+chunks missing. It looks exactly like a firmware bug and is not one. Hold one fd.
 
 The terminal has no local echo (`raw -echo`); the firmware echoes. `/dev/ttyACM0` is
 world-readable thanks to the udev rule above, so dialout group membership is not needed.

@@ -1,17 +1,20 @@
 #ifndef UART_H
 #define UART_H
 
-/* USART2 on PA2/PA3 -> ST-LINK VCP (/dev/ttyACM0), 115200 8N1.
-   printf goes out here; lines typed in the terminal come back via uart_take_line(). */
+#include <stdint.h>
+
+/* Console UART (board.h), wired to the ST-LINK VCP. Bytes only, no line editing. */
 
 void uart_init(void);
 
-/* Drains whatever arrived, echoes it, and returns a NUL-terminated line once the
-   user pressed Enter, else NULL. Call it from the main loop. The buffer is reused,
-   so consume it before the next call. */
-char *uart_take_line(void);
+/* Next received byte, -1 if none. */
+int uart_getc(void);
 
-/* stdio glue, defined here and called by syscall.c. */
+/* Called by the vector in stm32f0xx_it.c. */
+void uart_irq_handler(void);
+
+/* stdio glue. _write overrides the weak one in syscall.c. */
+int _write(int file, char *ptr, int len);
 int __io_putchar(int ch);
 int __io_getchar(void);
 
