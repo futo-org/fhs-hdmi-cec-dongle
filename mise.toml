@@ -5,10 +5,16 @@ cmake = "4.4.3"
 ninja = "1.13.2"
 gcc-arm-none-eabi = "13.3.Rel1"
 "ubi:probe-rs/probe-rs" = { version = "latest", exe = "probe-rs" }
+uv = "0.12.13"                 # backend for the pipx: tool below
+"pipx:pyserial" = "3.5"        # pyserial-miniterm: cross-platform serial console
 
 [env]
 PRESET = "{{ env.PRESET | default(value='Debug') }}"
 CHIP = "STM32F072RB"
+BAUD = "{{ env.BAUD | default(value='115200') }}"
+# ST-LINK VCP, found by USB VID:PID instead of a fixed device node, so the same
+# task works on Linux (/dev/ttyACM*), macOS (/dev/cu.usbmodem*) and Windows (COM*).
+SERIAL_PORT = "{{ env.SERIAL_PORT | default(value='hwgrep://0483:374') }}"
 ELF = "build/{{ env.PRESET | default(value='Debug') }}/fhs-hdmi-controller.elf"
 
 [tasks.configure]
@@ -61,5 +67,9 @@ depends = ["build"]
 run = "arm-none-eabi-gdb $ELF -ex 'target extended-remote :1337'"
 
 [tasks.monitor]
-description = "Open the ST-LINK virtual COM port at 115200"
-run = "minicom -D /dev/ttyACM0 -b 115200"
+description = "Open the ST-LINK virtual COM port (Ctrl-] to quit)"
+run = "pyserial-miniterm --exit-char 29 $SERIAL_PORT $BAUD"
+
+[tasks.ports]
+description = "List serial ports with their USB VID:PID"
+run = "pyserial-ports -v"

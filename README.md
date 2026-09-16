@@ -43,14 +43,21 @@ Probe enumerates (`0483:374b`) but has no udev rule → `DEV_CONNECT_ERR`.
 
 ## Serial console
 
-USART2 on PA2/PA3 → ST-LINK VCP → `/dev/ttyACM0`, **115200 8N1**. `printf` goes out here
+USART2 on PA2/PA3 → ST-LINK VCP, **115200 8N1**. `printf` goes out here
 (`syscall.c` already routes `_write`/`_read` to `__io_putchar`/`__io_getchar`, which
 `Src/uart.c` defines), and typed lines come back through `console_take_line()`.
 
-    mise run monitor          # minicom at 115200
+    mise run monitor          # pyserial-miniterm at 115200; Ctrl-] quits
+    mise run ports            # list serial ports + VID:PID, if monitor finds nothing
+
+The VCP is `/dev/ttyACM*` on Linux, `/dev/cu.usbmodem*` on macOS and `COM*` on Windows, so
+`monitor` locates it by USB VID:PID (`0483:374x`, ST-LINK) instead of a hardcoded node.
+Override either with env vars: `SERIAL_PORT=/dev/cu.usbmodem21203 BAUD=9600 mise run monitor`.
+
     # or, scripted -- keep ONE fd open for the whole session:
-    stty -F /dev/ttyACM0 115200 raw -echo -hupcl
-    exec 3<>/dev/ttyACM0
+    PORT=/dev/ttyACM0                      # macOS: /dev/cu.usbmodem*
+    stty -F $PORT 115200 raw -echo -hupcl  # macOS: stty -f $PORT ...
+    exec 3<>$PORT
     cat <&3 &
     sleep 3                   # the open toggles DTR/RTS; let the VCP settle
     printf 'status\r' >&3
@@ -62,12 +69,13 @@ The RX ISR only pushes bytes into a ring buffer — echo and line editing happen
 `Src/console.c` from the main loop. Echoing inside the ISR blocks for a full character
 time at 115200 and drops the next incoming byte (`status` arrives as `statu`).
 
-Re-opening `/dev/ttyACM0` per command (`printf ... > /dev/ttyACM0` in a loop) toggles
+Re-opening the VCP per command (`printf ... > $PORT` in a loop) toggles
 DTR/RTS on the ST-LINK VCP each time and drops bytes in flight — output comes back with
 chunks missing. It looks exactly like a firmware bug and is not one. Hold one fd.
 
-The terminal has no local echo (`raw -echo`); the firmware echoes. `/dev/ttyACM0` is
-world-readable thanks to the udev rule above, so dialout group membership is not needed.
+The terminal has no local echo (`raw -echo`); the firmware echoes. On Linux the node is
+world-readable thanks to the udev rule above, so dialout group membership is not needed;
+macOS and Windows need no such rule.
 
 ## HAL
 
