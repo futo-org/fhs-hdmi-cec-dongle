@@ -7,5 +7,9 @@
     "starm-clangd",
     "--query-driver=/home/alex/.local/share/mise/installs/gcc-arm-none-eabi/13.3.Rel1/bin/arm-none-eabi-gcc*",
     "--query-driver=/home/alex/.local/share/mise/installs/gcc-arm-none-eabi/13.3.Rel1/bin/arm-none-eabi-g++*"
+  ],
+  "cmake.cmakePath": "cube-cmake",
+  "cmake.configureArgs": [
+    "-DCMAKE_COMMAND=cube-cmake"
   ]
 }
