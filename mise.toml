@@ -5,13 +5,13 @@ cmake = "4.4.3"
 ninja = "1.13.2"
 gcc-arm-none-eabi = "13.3.Rel1"
 "ubi:probe-rs/probe-rs" = { version = "latest", exe = "probe-rs" }
-uv = "0.12.13"                 # backend for the pipx: tool below
-"pipx:pyserial" = "3.5"        # pyserial-miniterm: cross-platform serial console
+uv = "0.12.13"                 # runs the pyserial scripts below
 
 [env]
 PRESET = "{{ env.PRESET | default(value='Debug') }}"
 CHIP = "STM32F072RB"
 BAUD = "{{ env.BAUD | default(value='115200') }}"
+PYSERIAL = "uv run --quiet --with pyserial==3.5"
 # ST-LINK VCP, found by USB VID:PID instead of a fixed device node, so the same
 # task works on Linux (/dev/ttyACM*), macOS (/dev/cu.usbmodem*) and Windows (COM*).
 SERIAL_PORT = "{{ env.SERIAL_PORT | default(value='hwgrep://0483:374') }}"
@@ -67,9 +67,9 @@ depends = ["build"]
 run = "arm-none-eabi-gdb $ELF -ex 'target extended-remote :1337'"
 
 [tasks.monitor]
-description = "Open the ST-LINK virtual COM port (Ctrl-] to quit)"
-run = "pyserial-miniterm --exit-char 29 $SERIAL_PORT $BAUD"
+description = "Open the ST-LINK virtual COM port, survives replug (Ctrl-] to quit)"
+run = "$PYSERIAL tools/monitor.py $SERIAL_PORT $BAUD"
 
 [tasks.ports]
 description = "List serial ports with their USB VID:PID"
-run = "pyserial-ports -v"
+run = "$PYSERIAL -m serial.tools.list_ports -v"

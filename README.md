@@ -47,7 +47,7 @@ USART2 on PA2/PA3 → ST-LINK VCP, **115200 8N1**. `printf` goes out here
 (`syscall.c` already routes `_write`/`_read` to `__io_putchar`/`__io_getchar`, which
 `Src/uart.c` defines), and typed lines come back through `console_take_line()`.
 
-    mise run monitor          # pyserial-miniterm at 115200; Ctrl-] quits
+    mise run monitor          # tools/monitor.py at 115200; Ctrl-] quits
     mise run ports            # list serial ports + VID:PID, if monitor finds nothing
 
 The VCP is `/dev/ttyACM*` on Linux, `/dev/cu.usbmodem*` on macOS and `COM*` on Windows, so
@@ -72,6 +72,16 @@ time at 115200 and drops the next incoming byte (`status` arrives as `statu`).
 Re-opening the VCP per command (`printf ... > $PORT` in a loop) toggles
 DTR/RTS on the ST-LINK VCP each time and drops bytes in flight — output comes back with
 chunks missing. It looks exactly like a firmware bug and is not one. Hold one fd.
+
+Nor is the other one: the ST-LINK can stop forwarding target→host and stay stuck until
+the cable is replugged — an fd left **open but undrained** across an unplug is the way
+in. Host→target keeps working, so the shell still runs commands you cannot see (`probe-rs read` of USART2
+shows TXE/TC set and no error flags, `uwTick` ticking, the `line` buffer holding the
+command). `pyserial-miniterm` reaches that state on its own: on unplug its reader thread
+dies on the bare `OSError` from `Serial.in_waiting` that it does not catch, the process
+lives on holding the fd and its flock, and the replugged board looks dead.
+`tools/monitor.py` replaces it — one `select` loop, no reader thread, disconnect is
+expected: close the fd, re-find the VCP by VID:PID (the node name can change), reopen.
 
 The terminal has no local echo (`raw -echo`); the firmware echoes. On Linux the node is
 world-readable thanks to the udev rule above, so dialout group membership is not needed;
