@@ -171,6 +171,16 @@ int shell_take_hex_byte(const char **cursor, uint8_t *out)
     return 1;
 }
 
+/* user_send in cec.c parks a frame behind a busy transmitter, so "busy" is
+   no longer a reason. What is left: no address, or the previous command of
+   this kind (a parked frame, a running key sequence) is still in progress. */
+static void cec_rejected(void)
+{
+    printf("rejected: %s\n",
+           cec_get_address() == CEC_ADDR_NONE ? "no own address (cec addr <n>)"
+                                              : "previous command still in progress");
+}
+
 static void cec_usage(void)
 {
     printf("usage: cec addr <0-f|none|auto>   auto = poll 4,8,b (done at boot)\n");
@@ -248,7 +258,7 @@ static void cmd_cec(const char *args)
 
     if (shell_match_word(&cursor, "on") && *cursor == '\0') {
         if (!cec_one_touch_play()) {
-            printf("busy, or no own address (cec addr <n>)\n");
+            cec_rejected();
         }
         return;
     }
@@ -267,7 +277,7 @@ static void cmd_cec(const char *args)
             return;
         }
         if (!ok) {
-            printf("busy, or no own address (cec addr <n>)\n");
+            cec_rejected();
         }
         return;
     }
@@ -307,7 +317,7 @@ static void cmd_cec(const char *args)
             ok = up ? cec_volume_up(n) : cec_volume_down(n);
         }
         if (!ok) {
-            printf("busy, or no own address (cec addr <n>)\n");
+            cec_rejected();
         } else {
             printf("volume -> %s\n",
                    cec_system_audio_mode() ? "audio system (5)" : "tv (0)");
@@ -317,7 +327,7 @@ static void cmd_cec(const char *args)
 
     if (shell_match_word(&cursor, "off") && *cursor == '\0') {
         if (!cec_standby()) {
-            printf("busy, or no own address (cec addr <n>)\n");
+            cec_rejected();
         }
         return;
     }
@@ -419,13 +429,8 @@ static void cmd_cec(const char *args)
             }
             len++;
         }
-        if (!cec_send(dest, payload, len)) {
-            /* The only two reasons worth naming; the rest are argument bugs
-               the parser above already caught. */
-            printf("send rejected: %s\n",
-                   cec_get_address() == CEC_ADDR_NONE ? "no own address (cec addr <n>)"
-                                                      : "busy");
-            return;
+        if (!cec_send_user(dest, payload, len)) {
+            cec_rejected();     /* argument bugs the parser above already caught */
         }
         return;
     }

@@ -1,1 +1,3 @@
 .DS_Store
+# local test runs, logs and scratch output
+.scratch/

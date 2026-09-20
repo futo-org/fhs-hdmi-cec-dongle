@@ -154,6 +154,19 @@ static uint32_t pwr_retry_at_ms;
 
 static uint8_t tv_query_open;   /* <Give Device Power Status> sent, answer due */
 
+/* One typed frame parked behind whatever the transmitter is doing. The TV
+   re-interrogates us after every wake, and its <Give Device Vendor ID> lands
+   about where the next shell command does; with a single tx slot and no
+   queue that command was rejected "busy" and never went out (1 of 100
+   Standby commands in test-results/power-cycle-100.md). cec_task sends the
+   parked frame as soon as the slot frees, and runs the same bookkeeping the
+   direct path would have. */
+typedef enum { UQ_NONE, UQ_RAW, UQ_POWER, UQ_TV_POWER, UQ_AUDIO } uq_kind_t;
+static uq_kind_t uq_kind;
+static uint8_t uq_dest;
+static uint8_t uq_len;
+static uint8_t uq_buf[CEC_FRAME_MAX];
+
 /* Volume, CEC 1.4 §13.12 and §13.15. Keys go as <User Control Pressed>
    then <User Control Released>. While an Audio System has System Audio Mode
    on (its <Set System Audio Mode> broadcasts) it owns the volume and the
@@ -168,6 +181,15 @@ static uint8_t sys_audio_mode;  /* soundbar has the volume */
 static uint8_t vol_ui;          /* key in progress */
 static uint8_t vol_left;        /* presses still to send */
 static uint8_t vol_stage;       /* 0 idle, 1 press in flight, 2 release in flight */
+static uint8_t vol_retry_left;  /* per frame; the soundbar drops an ack now and then */
+static uint32_t vol_retry_at_ms;
+
+/* One missed ack in ~2500 key frames on the bench (Samsung soundbar, both
+   frames 100 ms apart). Aborting the whole key sequence on it left the
+   volume off by one; CEC 1.4 §7.1 lets an initiator retransmit, so each
+   frame gets a couple of tries. */
+#define VOL_RETRY_MAX   2U
+#define VOL_RETRY_MS    150U
 static uint32_t tv_query_deadline_ms;
 
 #define TV_QUERY_TIMEOUT_MS 2000U
@@ -816,16 +838,65 @@ static int send_active_source(void)
     return 0;
 }
 
-static int power_command(uint8_t opcode)
+/* The frame goes out now, plus the state its kind needs once it is on the
+   wire. Shared by the direct path and the parked one in cec_task. */
+static int dispatch_user(uq_kind_t kind, uint8_t dest, const uint8_t *payload,
+                         uint8_t len)
 {
-    if (!cec_send(0x0, &opcode, 1)) {
+    if (!cec_send(dest, payload, len)) {
         return 0;
     }
-    pwr_opcode = opcode;
-    pwr_in_flight = 1;
-    pwr_attempts = 1;
-    pwr_retry_due = 0;
+    switch (kind) {
+    case UQ_POWER:
+        pwr_opcode = payload[0];
+        pwr_in_flight = 1;
+        pwr_attempts = 1;
+        pwr_retry_due = 0;
+        break;
+    case UQ_TV_POWER:
+        tv_query_open = 1;
+        tv_query_deadline_ms = HAL_GetTick() + TV_QUERY_TIMEOUT_MS;
+        break;
+    default:
+        break;
+    }
     return 1;
+}
+
+/* Send now if the transmitter is free, else park it (one slot). Returns 0
+   with no own address, bad arguments, or a frame already waiting. */
+static int user_send(uq_kind_t kind, uint8_t dest, const uint8_t *payload,
+                     size_t len)
+{
+    if (own_addr == CEC_ADDR_NONE || dest > CEC_ADDR_BROADCAST ||
+        len > CEC_FRAME_MAX - 1U) {
+        return 0;
+    }
+    if (!tx_pending && !tx_busy) {
+        return dispatch_user(kind, dest, payload, (uint8_t)len);
+    }
+    if (uq_kind != UQ_NONE) {
+        return 0;
+    }
+    uq_kind = kind;
+    uq_dest = dest;
+    uq_len = (uint8_t)len;
+    if (len > 0U) {
+        memcpy(uq_buf, payload, len);
+    }
+    step("transmitter busy, %s waits for the slot",
+         len > 0U ? opcode_name(payload[0]) : "poll");
+    return 1;
+}
+
+int cec_send_user(uint8_t dest, const uint8_t *payload, size_t len)
+{
+    return user_send(UQ_RAW, dest, payload, len);
+}
+
+static int power_command(uint8_t opcode)
+{
+    return user_send(UQ_POWER, 0x0, &opcode, 1);
 }
 
 /* CEC 1.4 §13.1 One Touch Play: <Image View On> wakes the TV, <Active Source>
@@ -854,12 +925,7 @@ int cec_tv_query_power(void)
 {
     uint8_t q = 0x8F;
 
-    if (!cec_send(0x0, &q, 1)) {
-        return 0;
-    }
-    tv_query_open = 1;
-    tv_query_deadline_ms = HAL_GetTick() + TV_QUERY_TIMEOUT_MS;
-    return 1;
+    return user_send(UQ_TV_POWER, 0x0, &q, 1);
 }
 
 static uint8_t volume_target(void)
@@ -875,6 +941,8 @@ int cec_volume(uint8_t ui, uint8_t count)
     vol_ui = ui;
     vol_left = count;
     vol_stage = 0;                  /* cec_task sends the first press */
+    vol_retry_left = VOL_RETRY_MAX;
+    vol_retry_at_ms = HAL_GetTick();
     return 1;
 }
 
@@ -888,7 +956,7 @@ int cec_audio_status(void)
 {
     uint8_t q = 0x71;
 
-    return cec_send(volume_target(), &q, 1);
+    return user_send(UQ_AUDIO, volume_target(), &q, 1);
 }
 
 int cec_system_audio_mode(void)
@@ -1048,9 +1116,11 @@ void cec_task(void)
 
         if (vol_stage == 1U) {      /* press acknowledged */
             vol_stage = 2;
+            vol_retry_left = VOL_RETRY_MAX;
         } else if (vol_stage == 2U) {   /* release acknowledged */
             vol_left--;
             vol_stage = 0;          /* next press, if any are left */
+            vol_retry_left = VOL_RETRY_MAX;
             if (vol_left == 0U) {
                 info("volume keys done");
             }
@@ -1092,8 +1162,24 @@ void cec_task(void)
             tv_query_open = 0;      /* the failure line says why */
         }
         if (vol_stage != 0U && bits != 0U) {
-            vol_stage = 0;
-            vol_left = 0;
+            if ((bits & (CEC_FLAG_TXACKE | CEC_FLAG_TXERR)) != 0U &&
+                vol_retry_left > 0U) {
+                /* Same frame again in a moment: a failed press is resent
+                   from stage 0, a failed release stays at stage 2. */
+                vol_retry_left--;
+                vol_retry_at_ms = HAL_GetTick() + VOL_RETRY_MS;
+                step("key %s not acked, %u %s left",
+                     vol_stage == 1U ? "press" : "release", vol_retry_left,
+                     vol_retry_left == 1U ? "retry" : "retries");
+                if (vol_stage == 1U) {
+                    vol_stage = 0;
+                }
+            } else {
+                warn("volume keys aborted, %u press%s not sent",
+                     vol_left, vol_left == 1U ? "" : "es");
+                vol_stage = 0;
+                vol_left = 0;
+            }
         }
 
         if (pwr_in_flight && (bits & CEC_FLAG_TXACKE) != 0U &&
@@ -1135,7 +1221,20 @@ void cec_task(void)
         tx_is_reply = 0;
     }
 
-    if (vol_left > 0U && !tx_pending) {
+    /* Typed command that found the slot taken. First in line: the auto
+       replies below can wait a frame, the TV asks again if they are late. */
+    if (uq_kind != UQ_NONE && !tx_pending) {
+        uq_kind_t kind = uq_kind;
+
+        uq_kind = UQ_NONE;
+        if (!dispatch_user(kind, uq_dest, uq_buf, uq_len)) {
+            warn("parked %s could not be sent",
+                 uq_len > 0U ? opcode_name(uq_buf[0]) : "poll");
+        }
+    }
+
+    if (vol_left > 0U && !tx_pending &&
+        (HAL_GetTick() - vol_retry_at_ms) < 0x80000000UL) {
         uint8_t msg[2];
 
         if (vol_stage == 0U) {
@@ -1295,8 +1394,9 @@ void cec_dump(void)
     printf("CR %08lx CFGR %08lx IER %08lx ISR %08lx\n",
            (unsigned long)r->CR, (unsigned long)r->CFGR,
            (unsigned long)r->IER, (unsigned long)r->ISR);
-    printf("tx busy %u pending %u len %u next %u | rx len %u q %u/%u\n",
-           tx_busy, tx_pending, tx_len, tx_next, rx_len, rx_head, rx_tail);
+    printf("tx busy %u pending %u len %u next %u parked %u | rx len %u q %u/%u\n",
+           tx_busy, tx_pending, tx_len, tx_next, uq_kind != UQ_NONE,
+           rx_len, rx_head, rx_tail);
     printf("rxbr during tx %lu, watchdog %lu, foreign nack %lu\n",
            (unsigned long)stat_rxbr_during_tx, (unsigned long)stat_watchdog,
            (unsigned long)stat_foreign_nack);

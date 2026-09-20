@@ -32,7 +32,8 @@ cec_send(): tx_buf[] + header -> TXDR/TXSOM -> ISR feeds TXBR -> TXEND/err -> ce
 ```
 
 * ISR never prints. `cec_task()` runs in main loop, one rx frame per pass.
-* TX single buffered. `cec_send()` returns 0 if busy. Callers retry from `cec_task`.
+* TX single buffered. `cec_send()` returns 0 if busy. Protocol callers retry from `cec_task`.
+* Shell frames (`cec on|off|tv status|vol status|send`) go through `cec_send_user()`: sends now, or parks one frame (`uq_*`) that `cec_task` sends first thing when the slot frees. Before this a command typed while we answered the TV's `Give Device Vendor ID` (10 to 15 s after every wake) was dropped as "busy".
 
 ## ISR (`cec_irq_handler`)
 

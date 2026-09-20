@@ -70,12 +70,20 @@ int cec_get_auto_respond(void);
 void cec_bus_suspend(void);
 void cec_bus_resume(void);
 
-/* Queue one frame. payload is opcode + operands, NULL/0 sends a bare header
-   (a poll). Returns 0 if the peripheral is busy or the arguments are bad. */
+/* Start one frame now. payload is opcode + operands, NULL/0 sends a bare
+   header (a poll). Returns 0 if the transmitter is busy or the arguments are
+   bad. For the protocol's own traffic (replies, retries, allocation). */
 int cec_send(uint8_t dest, const uint8_t *payload, size_t len);
 
+/* Same, for the shell: sends now, or parks the frame (one slot) until the
+   transmitter is free, so a command typed while we answer the TV is not
+   lost. Returns 0 with no own address, bad arguments, or a frame already
+   parked. The one-shot commands below all go through this. */
+int cec_send_user(uint8_t dest, const uint8_t *payload, size_t len);
+
 /* One Touch Play: wake the TV and switch it to our port. <Active Source>
-   follows once <Image View On> is acknowledged. Returns 0 if busy. */
+   follows once <Image View On> is acknowledged. Returns 0 if rejected, see
+   cec_send_user. */
 int cec_one_touch_play(void);
 
 /* <Standby> to the TV. */
@@ -85,7 +93,7 @@ int cec_standby(void);
 int cec_is_active_source(void);
 
 /* <Give Device Power Status> to the TV; the answer prints as "tv is on",
-   "standby", "turning on" or "turning off". Returns 0 if busy. */
+   "standby", "turning on" or "turning off". Returns 0 if rejected. */
 int cec_tv_query_power(void);
 
 /* Volume keys, n presses each with its release. They go to the Audio System
