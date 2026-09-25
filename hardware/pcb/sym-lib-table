@@ -1,0 +1,4 @@
+(sym_lib_table
+  (version 7)
+  (lib (name "hdmi-cec")(type "KiCad")(uri "${KIPRJMOD}/lib/hdmi-cec.kicad_sym")(options "")(descr "Project parts from LCSC"))
+)
