@@ -180,7 +180,8 @@ static uint8_t uq_buf[CEC_FRAME_MAX];
 static uint8_t sys_audio_mode;  /* soundbar has the volume */
 static uint8_t vol_ui;          /* key in progress */
 static uint8_t vol_left;        /* presses still to send */
-static uint8_t vol_stage;       /* 0 idle, 1 press in flight, 2 release in flight */
+static uint8_t vol_stage;       /* 0 press next, 1 press in flight, 2 release next or in flight */
+static uint8_t vol_in_flight;   /* tx slot holds a key frame; else a tx result is someone else's */
 static uint8_t vol_retry_left;  /* per frame; the soundbar drops an ack now and then */
 static uint32_t vol_retry_at_ms;
 
@@ -1114,10 +1115,10 @@ void cec_task(void)
         }
         tx_is_reply = 0;
 
-        if (vol_stage == 1U) {      /* press acknowledged */
+        if (vol_in_flight && vol_stage == 1U) {         /* press acknowledged */
             vol_stage = 2;
             vol_retry_left = VOL_RETRY_MAX;
-        } else if (vol_stage == 2U) {   /* release acknowledged */
+        } else if (vol_in_flight && vol_stage == 2U) {  /* release acknowledged */
             vol_left--;
             vol_stage = 0;          /* next press, if any are left */
             vol_retry_left = VOL_RETRY_MAX;
@@ -1125,6 +1126,7 @@ void cec_task(void)
                 info("volume keys done");
             }
         }
+        vol_in_flight = 0;
 
         if (pwr_in_flight) {        /* TV acknowledged the power command */
             pwr_in_flight = 0;
@@ -1161,7 +1163,7 @@ void cec_task(void)
         if (tv_query_open && bits != 0U) {
             tv_query_open = 0;      /* the failure line says why */
         }
-        if (vol_stage != 0U && bits != 0U) {
+        if (vol_in_flight && bits != 0U) {
             if ((bits & (CEC_FLAG_TXACKE | CEC_FLAG_TXERR)) != 0U &&
                 vol_retry_left > 0U) {
                 /* Same frame again in a moment: a failed press is resent
@@ -1181,6 +1183,7 @@ void cec_task(void)
                 vol_left = 0;
             }
         }
+        vol_in_flight = 0;
 
         if (pwr_in_flight && (bits & CEC_FLAG_TXACKE) != 0U &&
             pwr_attempts < PWR_ATTEMPTS_MAX) {
@@ -1242,11 +1245,12 @@ void cec_task(void)
             msg[1] = vol_ui;
             if (cec_send(volume_target(), msg, 2)) {
                 vol_stage = 1;
+                vol_in_flight = 1;
             }
         } else if (vol_stage == 2U) {
             msg[0] = 0x45;          /* User Control Released */
             if (cec_send(volume_target(), msg, 1)) {
-                /* stays 2 until acknowledged, then counts down above */
+                vol_in_flight = 1;  /* stays 2 until acknowledged, then counts down above */
             }
         }
     }
@@ -1650,6 +1654,12 @@ static void cec_rx_rearm(void)
     pwr_in_flight = 0;
     pwr_retry_due = 0;
     alloc_polling = 0;
+    if (vol_in_flight) {            /* aborted key frame: send it again */
+        vol_in_flight = 0;
+        if (vol_stage == 1U) {
+            vol_stage = 0;
+        }
+    }
     BOARD_CEC->ISR = CEC_FLAG_ALL;
 }
 
