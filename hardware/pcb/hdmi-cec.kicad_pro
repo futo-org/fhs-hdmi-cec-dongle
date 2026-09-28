@@ -240,7 +240,7 @@
       "internal_id": "",
       "mfg": "",
       "mpn": "",
-      "sch_revision": ""
+      "sch_revision": "A"
     },
     "layer_pairs": [],
     "layer_presets": [],
@@ -669,13 +669,18 @@
       {
         "filename": "hdmi-cec.kicad_sch",
         "name": "hdmi-cec",
-        "uuid": "00000000-0000-0000-0000-000000000000"
+        "uuid": "d1f83add-0ff9-52f4-acd6-a6f8ec38997c"
       }
     ],
     "used_designators": "",
     "variants": []
   },
-  "sheets": [],
+  "sheets": [
+    [
+      "d1f83add-0ff9-52f4-acd6-a6f8ec38997c",
+      "hdmi-cec"
+    ]
+  ],
   "text_variables": {},
   "tuning_profiles": {
     "meta": {
