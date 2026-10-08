@@ -32,8 +32,13 @@
 MEMORY
 {
   RAM    (xrw)    : ORIGIN = 0x20000000,   LENGTH = 16K
-  FLASH    (rx)    : ORIGIN = 0x8000000,   LENGTH = 128K
+  FLASH    (rx)    : ORIGIN = 0x8000000,   LENGTH = 126K
+  SETTINGS (r)     : ORIGIN = 0x801F800,   LENGTH = 2K
 }
+
+/* Last flash page, kept out of the image for settings.c */
+_settings_page = ORIGIN(SETTINGS);
+_settings_page_size = LENGTH(SETTINGS);
 
 /* Entry Point */
 ENTRY(Reset_Handler)

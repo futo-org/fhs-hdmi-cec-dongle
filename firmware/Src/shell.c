@@ -1,8 +1,15 @@
 #include "shell.h"
+#include "adapter.h"
 #include "board.h"
 #include "cec.h"
 #include "cec_diag.h"
+#include "cec_log.h"
+#include "console.h"
 #include "led.h"
+#include "settings.h"
+#include "version.h"
+
+#include "tusb.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -21,20 +28,36 @@ typedef struct {
 static void cmd_help(const char *args);
 static void cmd_led(const char *args);
 static void cmd_cec(const char *args);
+static void cmd_fault(const char *args);
 static void cmd_diag(const char *args);
 static void cmd_status(const char *args);
 static void cmd_reset(const char *args);
 
 static const command_t commands[] = {
-    { "help",   "",             "this text",          cmd_help },
-    { "led",    "on|off|blink", "user LED",           cmd_led },
-    { "cec",    "addr|send ...", "hdmi-cec bus",       cmd_cec },
+    { "help",   "",               "this text",                cmd_help },
+    { "led",    "on|off|blink",   "status LED",               cmd_led },
+    { "cec",    "send|listen|...", "hdmi-cec bus",            cmd_cec },
+    { "fault",  "nack|late|...",  "break the next host exchange", cmd_fault },
     { "diag",   "line|noise|...", "cec line instrumentation", cmd_diag },
-    { "status", "",             "clock, uptime, led, cec", cmd_status },
-    { "reset",  "",             "software reset",     cmd_reset },
+    { "status", "",               "clock, usb, adapter, cec", cmd_status },
+    { "reset",  "",               "software reset",           cmd_reset },
 };
 
 #define COMMAND_COUNT (sizeof(commands) / sizeof(commands[0]))
+
+static const struct {
+    adapter_fault_t fault;
+    const char *name;
+    const char *summary;
+} fault_names[] = {
+    { ADAPTER_FAULT_NONE,         "none",  "cancel a pending fault" },
+    { ADAPTER_FAULT_NACK,         "nack",  "next host frame reports NACK, unsent" },
+    { ADAPTER_FAULT_LATE_TX_DONE, "late",  "next host result arrives after the kernel timeout" },
+    { ADAPTER_FAULT_DROP_RX,      "drop",  "next received frame never reaches the host" },
+    { ADAPTER_FAULT_WEDGE_TX,     "wedge", "next host result is never reported" },
+};
+
+#define FAULT_COUNT (sizeof(fault_names) / sizeof(fault_names[0]))
 
 const char *shell_skip_spaces(const char *s)
 {
@@ -74,7 +97,7 @@ static void cmd_help(const char *args)
     (void)args;
 
     for (size_t i = 0; i < COMMAND_COUNT; i++) {
-        printf("  %-6s %-14s %s\n",
+        printf("  %-6s %-15s %s\n",
                commands[i].name, commands[i].usage, commands[i].summary);
     }
 }
@@ -90,23 +113,37 @@ static void cmd_led(const char *args)
     }
 }
 
+static const char *fault_name(adapter_fault_t f)
+{
+    for (size_t i = 0; i < FAULT_COUNT; i++) {
+        if (fault_names[i].fault == f) {
+            return fault_names[i].name;
+        }
+    }
+    return "?";
+}
+
 static void cmd_status(const char *args)
 {
+    cec_stats_t s;
+    uint16_t pa = settings_phys_addr();
+
     (void)args;
 
-    printf("sysclk  %lu Hz\n", (unsigned long)HAL_RCC_GetSysClockFreq());
-    printf("pclk1   %lu Hz\n", (unsigned long)HAL_RCC_GetPCLK1Freq());
-    printf("uptime  %lu ms\n", (unsigned long)HAL_GetTick());
-    printf("led     %s\n", led_mode_name(led_get_mode()));
-    printf("cec     %s, addr %c, %s, rx %lu, tx %lu, err %lu\n",
-           cec_state_name(),
-           cec_get_address() == CEC_ADDR_NONE
-               ? (cec_allocating() ? '?' : '-')
-               : "0123456789abcdef"[cec_get_address()],
-           cec_is_active_source() ? "active source" : "not active",
-           (unsigned long)cec_rx_count(),
-           (unsigned long)cec_tx_count(),
-           (unsigned long)cec_err_count());
+    cec_get_stats(&s);
+    printf("firmware %u.%u.%u, sysclk %lu Hz, uptime %lu ms\n",
+           FW_VERSION_MAJOR, FW_VERSION_MINOR, FW_VERSION_PATCH,
+           (unsigned long)HAL_RCC_GetSysClockFreq(), (unsigned long)HAL_GetTick());
+    printf("usb      %s, adapter %s, ack mask %04x\n",
+           tud_mounted() ? "configured" : "not configured",
+           adapter_enabled() ? "enabled" : "idle", cec_get_ack_mask());
+    printf("stored   physical address %x.%x.%x.%x\n",
+           (pa >> 12) & 0xFU, (pa >> 8) & 0xFU, (pa >> 4) & 0xFU, pa & 0xFU);
+    printf("cec      %s, rx %lu, tx %lu, recoveries %lu\n", cec_state_name(),
+           (unsigned long)s.rx_frames, (unsigned long)s.tx_frames,
+           (unsigned long)s.recoveries);
+    printf("fault    %s pending\n", fault_name(adapter_pending_fault()));
+    printf("led      %s\n", led_mode_name(led_get_mode()));
 }
 
 static void cmd_reset(const char *args)
@@ -173,24 +210,26 @@ int shell_take_hex_byte(const char **cursor, uint8_t *out)
 
 static void cec_usage(void)
 {
-    printf("usage: cec addr <0-f|none|auto>   auto = poll 4,8,b (done at boot)\n");
-    printf("       cec on                   TV on and switched to our port\n");
-    printf("       cec off                  TV standby\n");
-    printf("       cec tv status            ask the TV: on, standby, turning on/off\n");
-    printf("       cec vol up|down [n]      volume keys, n presses (default 1)\n");
-    printf("       cec vol mute             mute toggle\n");
-    printf("       cec vol status           audio system volume, if there is one\n");
+    printf("usage: cec send <dest 0-f> [hex bytes]  from the host's address, else 15\n");
+    printf("       cec listen <own|all>     print own+broadcast, or every frame\n");
+    printf("       cec raw <on|off>         raw wire bytes before each frame (default on)\n");
     printf("       cec tol <std|ext>        rx timing tolerance\n");
     printf("       cec reset                re-init the peripheral\n");
     printf("       cec dump                 registers and isr counters\n");
-    printf("       cec listen <own|all>     print own+broadcast, or every frame\n");
-    printf("       cec listen reduced       hardware address filter (wedges, see README)\n");
-    printf("       cec raw <on|off>         raw wire bytes before each frame (default on)\n");
-    printf("       cec auto <on|off>        auto-answer TV queries\n");
-    printf("       cec send <dest 0-f> [hex bytes]\n");
-    printf("  e.g. cec send f 36        broadcast Standby\n");
-    printf("       cec send 0           poll the TV\n");
-    printf("  line diagnostics live under 'diag'\n");
+    printf("  e.g. cec send 0           poll the TV\n");
+    printf("  a local send aborts a host frame in flight\n");
+}
+
+static int take_on_off(const char **cursor, int *on)
+{
+    if (shell_match_word(cursor, "on")) {
+        *on = 1;
+    } else if (shell_match_word(cursor, "off")) {
+        *on = 0;
+    } else {
+        return 0;
+    }
+    return **cursor == '\0';
 }
 
 static void cmd_cec(const char *args)
@@ -198,239 +237,67 @@ static void cmd_cec(const char *args)
     const char *cursor = args;
     uint8_t payload[CEC_FRAME_MAX - 1];
     uint8_t dest;
-    size_t len = 0;
+    uint8_t len = 0;
+    int on;
 
-    if (shell_match_word(&cursor, "addr")) {
-        uint8_t addr;
-
-        if (shell_match_word(&cursor, "none")) {
-            cec_set_address(CEC_ADDR_NONE);
-            printf("addr none\n");
-            return;
-        }
-        if (shell_match_word(&cursor, "auto")) {
-            cec_allocate_address();
-            printf("polling 4, 8, b...\n");
-            return;
-        }
-        if (!shell_take_nibble(&cursor, &addr) || *cursor != '\0') {
-            cec_usage();
-            return;
-        }
-        if (!cec_set_address(addr)) {
-            printf("addr rejected\n");
-            return;
-        }
-        printf("addr %x\n", addr);
-        return;
-    }
-
-    if (shell_match_word(&cursor, "dump")) {
+    if (shell_match_word(&cursor, "dump") && *cursor == '\0') {
         cec_dump();
-        return;
-    }
-
-    if (shell_match_word(&cursor, "raw")) {
-        int on;
-
-        if (shell_match_word(&cursor, "on")) {
-            on = 1;
-        } else if (shell_match_word(&cursor, "off")) {
-            on = 0;
-        } else {
-            cec_usage();
-            return;
-        }
-        cec_set_show_raw(on);
+    } else if (shell_match_word(&cursor, "raw") && take_on_off(&cursor, &on)) {
+        cec_log_set_show_raw(on);
         printf("raw %s\n", on ? "on" : "off");
-        return;
-    }
-
-    if (shell_match_word(&cursor, "on") && *cursor == '\0') {
-        if (!cec_one_touch_play()) {
-            printf("busy, or no own address (cec addr <n>)\n");
-        }
-        return;
-    }
-
-    if (shell_match_word(&cursor, "tv")) {
-        int ok;
-
-        if (shell_match_word(&cursor, "status") && *cursor == '\0') {
-            ok = cec_tv_query_power();
-        } else if (shell_match_word(&cursor, "on") && *cursor == '\0') {
-            ok = cec_one_touch_play();
-        } else if (shell_match_word(&cursor, "off") && *cursor == '\0') {
-            ok = cec_standby();
-        } else {
-            cec_usage();
-            return;
-        }
-        if (!ok) {
-            printf("busy, or no own address (cec addr <n>)\n");
-        }
-        return;
-    }
-
-    if (shell_match_word(&cursor, "vol")) {
-        int ok;
-        int up = 0;
-        int key = 0;
-        uint8_t n = 1;
-
-        if (shell_match_word(&cursor, "status") && *cursor == '\0') {
-            ok = cec_audio_status();
-        } else if (shell_match_word(&cursor, "mute") && *cursor == '\0') {
-            ok = cec_volume_mute();
-        } else {
-            if (shell_match_word(&cursor, "up")) {
-                key = 1;
-                up = 1;
-            } else if (shell_match_word(&cursor, "down")) {
-                key = 1;
-            }
-            if (!key) {
-                cec_usage();
-                return;
-            }
-            if (*cursor != '\0') {
-                n = 0;
-                while (*cursor >= '0' && *cursor <= '9' && n < 25U) {
-                    n = (uint8_t)(n * 10U + (uint8_t)(*cursor - '0'));
-                    cursor++;
-                }
-                if (*cursor != '\0' || n == 0U) {
-                    cec_usage();
-                    return;
-                }
-            }
-            ok = up ? cec_volume_up(n) : cec_volume_down(n);
-        }
-        if (!ok) {
-            printf("busy, or no own address (cec addr <n>)\n");
-        } else {
-            printf("volume -> %s\n",
-                   cec_system_audio_mode() ? "audio system (5)" : "tv (0)");
-        }
-        return;
-    }
-
-    if (shell_match_word(&cursor, "off") && *cursor == '\0') {
-        if (!cec_standby()) {
-            printf("busy, or no own address (cec addr <n>)\n");
-        }
-        return;
-    }
-
-    if (shell_match_word(&cursor, "reset")) {
-        if (*cursor != '\0') {
-            cec_usage();
-            return;
-        }
+    } else if (shell_match_word(&cursor, "reset") && *cursor == '\0') {
         cec_recover();
         printf("cec re-init, state %s\n", cec_state_name());
-        return;
-    }
-
-    if (shell_match_word(&cursor, "tol")) {
-        int on;
-
-        if (shell_match_word(&cursor, "ext")) {
-            on = 1;
-        } else if (shell_match_word(&cursor, "std")) {
-            on = 0;
+    } else if (shell_match_word(&cursor, "tol")) {
+        if (shell_match_word(&cursor, "ext") && *cursor == '\0') {
+            cec_set_extended_tolerance(1);
+        } else if (shell_match_word(&cursor, "std") && *cursor == '\0') {
+            cec_set_extended_tolerance(0);
         } else {
             cec_usage();
             return;
         }
-        if (*cursor != '\0' || !cec_set_extended_tolerance(on)) {
-            cec_usage();
-            return;
-        }
-        printf("tol %s\n", on ? "ext" : "std");
-        return;
-    }
-
-    if (shell_match_word(&cursor, "auto")) {
-        int on;
-
-        if (shell_match_word(&cursor, "on")) {
-            on = 1;
-        } else if (shell_match_word(&cursor, "off")) {
-            on = 0;
+        printf("tol %s\n", cec_get_extended_tolerance() ? "ext" : "std");
+    } else if (shell_match_word(&cursor, "listen")) {
+        if (shell_match_word(&cursor, "all") && *cursor == '\0') {
+            cec_log_set_show_all(1);
+        } else if (shell_match_word(&cursor, "own") && *cursor == '\0') {
+            cec_log_set_show_all(0);
         } else {
             cec_usage();
             return;
         }
-        if (*cursor != '\0') {
-            cec_usage();
-            return;
-        }
-        cec_set_auto_respond(on);
-        printf("auto %s\n", on ? "on" : "off");
-        return;
-    }
-
-    if (shell_match_word(&cursor, "listen")) {
-        int hw_all;
-        int show;
-        const char *name;
-
-        if (shell_match_word(&cursor, "all")) {
-            hw_all = 1;
-            show = 1;
-            name = "all";
-        } else if (shell_match_word(&cursor, "own")) {
-            hw_all = 1;
-            show = 0;
-            name = "own";
-        } else if (shell_match_word(&cursor, "reduced")) {
-            hw_all = 0;
-            show = 0;
-            name = "reduced (hardware filter)";
-        } else {
-            cec_usage();
-            return;
-        }
-        if (*cursor != '\0' || !cec_set_listen_all(hw_all)) {
-            cec_usage();
-            return;
-        }
-        cec_set_show_all(show);
-        printf("listen %s\n", name);
-        return;
-    }
-
-
-
-
-
-
-    if (shell_match_word(&cursor, "send")) {
-        if (!shell_take_nibble(&cursor, &dest)) {
-            cec_usage();
-            return;
-        }
+        printf("listen %s\n", cec_log_get_show_all() ? "all" : "own");
+    } else if (shell_match_word(&cursor, "send") && shell_take_nibble(&cursor, &dest)) {
         while (*cursor != '\0') {
-            if (len >= sizeof(payload) ||
-                !shell_take_hex_byte(&cursor, &payload[len])) {
+            if (len >= sizeof(payload) || !shell_take_hex_byte(&cursor, &payload[len])) {
                 cec_usage();
                 return;
             }
             len++;
         }
-        if (!cec_send(dest, payload, len)) {
-            /* The only two reasons worth naming; the rest are argument bugs
-               the parser above already caught. */
-            printf("send rejected: %s\n",
-                   cec_get_address() == CEC_ADDR_NONE ? "no own address (cec addr <n>)"
-                                                      : "busy");
+        if (!adapter_send_local(dest, payload, len)) {
+            printf("send rejected\n");
+        }
+    } else {
+        cec_usage();
+    }
+}
+
+static void cmd_fault(const char *args)
+{
+    const char *cursor = args;
+
+    for (size_t i = 0; i < FAULT_COUNT; i++) {
+        if (shell_match_word(&cursor, fault_names[i].name) && *cursor == '\0') {
+            adapter_inject_fault(fault_names[i].fault);
+            printf("fault %s armed\n", fault_names[i].name);
             return;
         }
-        return;
     }
-
-    cec_usage();
+    for (size_t i = 0; i < FAULT_COUNT; i++) {
+        printf("  fault %-6s %s\n", fault_names[i].name, fault_names[i].summary);
+    }
 }
 
 static void cmd_diag(const char *args)
@@ -461,16 +328,29 @@ static void dispatch(const char *cursor)
     printf("unknown: '%s' (try 'help')\n", cursor);
 }
 
-void shell_begin(void)
+static void banner(void)
 {
-    printf("\n\nfhs-hdmi-cec on NUCLEO-F072RB, SYSCLK %lu Hz\n",
-           (unsigned long)HAL_RCC_GetSysClockFreq());
+    printf("\nfhs-cec debug console, firmware %u.%u.%u\n",
+           FW_VERSION_MAJOR, FW_VERSION_MINOR, FW_VERSION_PATCH);
     printf("type 'help' for commands\n");
     printf(PROMPT);
 }
 
-void shell_execute(const char *line)
+void shell_task(void)
 {
-    dispatch(shell_skip_spaces(line));
-    printf(PROMPT);
+    static bool was_connected;
+    bool connected = tud_cdc_connected();
+    const char *line;
+
+    /* Output before a terminal opens the port goes nowhere. */
+    if (connected && !was_connected) {
+        banner();
+    }
+    was_connected = connected;
+
+    line = console_take_line();
+    if (line != NULL) {
+        dispatch(shell_skip_spaces(line));
+        printf(PROMPT);
+    }
 }

@@ -1,0 +1,2 @@
+# FHS CEC dongle: stable name and access for the video group.
+SUBSYSTEM=="cec", ATTRS{idVendor}=="1209", ATTRS{idProduct}=="0001", SYMLINK+="cec-fhs", MODE="0660", GROUP="video"

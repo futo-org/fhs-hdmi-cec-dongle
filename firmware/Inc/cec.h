@@ -8,96 +8,78 @@
 #define CEC_FRAME_MAX       16U
 
 #define CEC_ADDR_BROADCAST  0x0FU
-#define CEC_ADDR_NONE       0xFFU   /* no own address: acknowledge nothing */
+#define CEC_ADDR_COUNT      16U
+
+/* Longest legal frame is 16 bytes at ~24 ms each, plus signal free time and
+   the hardware's own arbitration retries. Past this a transmit is wedged. */
+#define CEC_TX_TIMEOUT_MS   1000U
+
+typedef struct {
+    uint32_t ms;
+    uint8_t len;
+    uint8_t data[CEC_FRAME_MAX];    /* header first */
+} cec_frame_t;
+
+typedef enum {
+    CEC_TX_OK,
+    CEC_TX_NACK,
+    CEC_TX_ARB_LOST,
+    CEC_TX_LOW_DRIVE,
+    CEC_TX_ERROR,
+} cec_tx_result_t;
+
+typedef struct {
+    uint32_t rx_frames;
+    uint32_t rx_errors;
+    uint32_t rx_dropped;
+    uint32_t tx_frames;
+    uint32_t tx_nack;
+    uint32_t tx_arb_lost;
+    uint32_t tx_low_drive;
+    uint32_t tx_error;
+    uint32_t recoveries;
+} cec_stats_t;
 
 void cec_init(void);
 
 /* Called by the vector in stm32f0xx_it.c. Shared with CAN. */
 void cec_irq_handler(void);
 
-/* Prints received frames and transmit results. Main loop, never the ISR. */
+/* Timeouts and receiver watchdogs. Main loop. */
 void cec_task(void);
 
-const char *cec_state_name(void);
+/* Bit n set = acknowledge frames addressed to logical address n. 15 is
+   broadcast and never acknowledged. Aborts a frame in flight, which then
+   reports CEC_TX_ERROR. */
+void cec_set_ack_mask(uint16_t mask);
+uint16_t cec_get_ack_mask(void);
 
-/* Registers, transmit/receive state and the interrupt path counters. */
-void cec_dump(void);
-uint32_t cec_rx_count(void);
-uint32_t cec_tx_count(void);
-uint32_t cec_err_count(void);
+/* Send one frame, header first. A transmit still in flight is abandoned
+   without a result. Every accepted frame produces exactly one result within
+   CEC_TX_TIMEOUT_MS. Returns 0 on a bad length. */
+int cec_transmit(const uint8_t *frame, uint8_t len);
 
-uint8_t cec_get_address(void);
+/* Every frame on the bus, ours to filter. Returns 0 when empty. */
+int cec_take_rx(cec_frame_t *out);
 
-/* 0..15, or CEC_ADDR_NONE. Returns 0 if rejected. Cancels allocation. */
-int cec_set_address(uint8_t logical);
+/* Result of the last cec_transmit. Returns 0 while there is none. */
+int cec_take_tx_result(cec_tx_result_t *out);
 
-/* Claim the first free Playback address (4, 8, 11) by polling. Runs at boot
-   on its own; this restarts it. Result is printed from cec_task. */
-void cec_allocate_address(void);
-int cec_allocating(void);
+void cec_get_stats(cec_stats_t *out);
 
-/* Re-init the peripheral, keeping address and tolerance. The only way out of
-   a transmit wedged by lost arbitration. */
+/* Re-init the peripheral, keeping the ack mask and tolerance. A frame in
+   flight reports CEC_TX_ERROR. */
 void cec_recover(void);
 
-/* Extended Rx tolerance widens the accepted bit windows. Returns 0 if the
-   re-init failed. */
-int cec_set_extended_tolerance(int on);
+/* Bench use, debug shell only. */
+const char *cec_state_name(void);
+void cec_dump(void);
+void cec_set_extended_tolerance(int on);
 int cec_get_extended_tolerance(void);
-
-/* Hardware listening mode. Full (the default) receives frames addressed to
-   anyone, without acknowledging them; reduced lets the hardware drop them,
-   and on this silicon that path wedges the receiver, see cec.c. */
-int cec_set_listen_all(int on);
-int cec_get_listen_all(void);
-
-/* Console filter: print frames for other devices too. Off by default. */
-void cec_set_show_all(int on);
-int cec_get_show_all(void);
-
-/* Console: raw wire bytes (header included) on a line before each decoded
-   frame. On by default. */
-void cec_set_show_raw(int on);
-int cec_get_show_raw(void);
-
-/* Answer the standard interrogation opcodes automatically. On by default;
-   a device the TV cannot identify does not get to control it. */
-void cec_set_auto_respond(int on);
-int cec_get_auto_respond(void);
 
 /* Hand the pin to plain GPIO so cec_diag can measure the line directly, and
    give it back. Paired; the peripheral is disabled in between. */
 void cec_bus_suspend(void);
 void cec_bus_resume(void);
-
-/* Queue one frame. payload is opcode + operands, NULL/0 sends a bare header
-   (a poll). Returns 0 if the peripheral is busy or the arguments are bad. */
-int cec_send(uint8_t dest, const uint8_t *payload, size_t len);
-
-/* One Touch Play: wake the TV and switch it to our port. <Active Source>
-   follows once <Image View On> is acknowledged. Returns 0 if busy. */
-int cec_one_touch_play(void);
-
-/* <Standby> to the TV. */
-int cec_standby(void);
-
-/* Whether the TV is showing our port, as far as the bus has told us. */
-int cec_is_active_source(void);
-
-/* <Give Device Power Status> to the TV; the answer prints as "tv is on",
-   "standby", "turning on" or "turning off". Returns 0 if busy. */
-int cec_tv_query_power(void);
-
-/* Volume keys, n presses each with its release. They go to the Audio System
-   while it has System Audio Mode on, otherwise to the TV. Returns 0 if a
-   key sequence is already running or there is no own address. */
-int cec_volume_up(uint8_t n);
-int cec_volume_down(uint8_t n);
-int cec_volume_mute(void);
-
-/* <Give Audio Status> to whoever has the volume; prints "audio: volume N".
-   Only an Audio System answers it. */
-int cec_audio_status(void);
-int cec_system_audio_mode(void);
 
 #endif

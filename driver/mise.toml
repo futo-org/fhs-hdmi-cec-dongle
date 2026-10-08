@@ -1,0 +1,46 @@
+# fhs-cec kernel driver. Builds need Linux; docker-build works from any host.
+
+[env]
+DRIVER_VERSION = "{{ exec(command='cat VERSION') }}"
+
+[tasks.build]
+description = "Build against the running kernel (KDIR to override)"
+run = "make modules"
+
+[tasks.clean]
+description = "Delete build output and tarballs"
+run = "make clean"
+
+[tasks.load]
+description = "insmod the freshly built module"
+depends = ["build"]
+run = "sudo insmod fhs-cec.ko"
+
+[tasks.unload]
+description = "rmmod the module"
+run = "sudo rmmod fhs_cec"
+
+[tasks.dkms]
+description = "Build the DKMS release tarball"
+run = "make dkms-tarball"
+
+[tasks.dkms-install]
+description = "Install this tree through DKMS, as a user would"
+depends = ["dkms"]
+run = [
+  "sudo tar -xzf fhs-cec-$DRIVER_VERSION.tar.gz -C /usr/src",
+  "sudo dkms install fhs-cec/$DRIVER_VERSION",
+  "sudo install -m 644 70-fhs-cec.rules /etc/udev/rules.d/",
+  "sudo udevadm control --reload",
+]
+
+[tasks.dkms-remove]
+description = "Remove the DKMS install"
+run = [
+  "sudo dkms remove fhs-cec/$DRIVER_VERSION --all",
+  "sudo rm -rf /usr/src/fhs-cec-$DRIVER_VERSION /etc/udev/rules.d/70-fhs-cec.rules",
+]
+
+[tasks.docker-build]
+description = "Compile test against Debian 6.1 and Fedora headers, plus a dkms build"
+run = "./docker-build.sh"

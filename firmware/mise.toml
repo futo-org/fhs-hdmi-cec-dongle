@@ -1,4 +1,4 @@
-# STM32 Nucleo-F072RB. Toolchain is mise-managed: no STM32Cube VS Code bundles.
+# FHS CEC dongle, STM32F072CBU6. Toolchain is mise-managed: no STM32Cube VS Code bundles.
 
 [tools]
 cmake = "4.4.3"
@@ -9,12 +9,13 @@ uv = "0.12.13"                 # runs the pyserial scripts below
 
 [env]
 PRESET = "{{ env.PRESET | default(value='Debug') }}"
-CHIP = "STM32F072RB"
+CHIP = "STM32F072CB"
 BAUD = "{{ env.BAUD | default(value='115200') }}"
 PYSERIAL = "uv run --quiet --with pyserial==3.5"
-# ST-LINK VCP, found by USB VID:PID instead of a fixed device node, so the same
-# task works on Linux (/dev/ttyACM*), macOS (/dev/cu.usbmodem*) and Windows (COM*).
-SERIAL_PORT = "{{ env.SERIAL_PORT | default(value='hwgrep://0483:374') }}"
+# USB CDC debug console (Debug preset), found by USB VID:PID instead of a fixed
+# device node, so the same task works on Linux (/dev/ttyACM*), macOS
+# (/dev/cu.usbmodem*) and Windows (COM*). VID:PID from driver/fhs-cec-proto.h.
+SERIAL_PORT = "{{ env.SERIAL_PORT | default(value='hwgrep://1209:0001') }}"
 ELF = "build/{{ env.PRESET | default(value='Debug') }}/fhs-hdmi-controller.elf"
 
 [tasks.configure]
@@ -67,7 +68,7 @@ depends = ["build"]
 run = "arm-none-eabi-gdb $ELF -ex 'target extended-remote :1337'"
 
 [tasks.monitor]
-description = "Open the ST-LINK virtual COM port, survives replug (Ctrl-] to quit)"
+description = "Open the USB debug console, survives replug (Ctrl-] to quit)"
 run = "$PYSERIAL tools/monitor.py $SERIAL_PORT $BAUD"
 
 [tasks.ports]
