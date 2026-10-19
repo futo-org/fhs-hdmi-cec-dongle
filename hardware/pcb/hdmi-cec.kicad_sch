@@ -6,7 +6,7 @@
 	(paper "A3")
 	(title_block
 		(title "HDMI-CEC Injector")
-		(rev "A")
+		(rev "v0.2")
 		(company "FUTO")
 	)
 	(lib_symbols
@@ -629,341 +629,24 @@
 			)
 			(embedded_fonts no)
 		)
-		(symbol "Diode:BAT54C"
-			(pin_names
-				(offset 1.016)
-			)
-			(exclude_from_sim no)
-			(in_bom yes)
-			(on_board yes)
-			(in_pos_files yes)
-			(duplicate_pin_numbers_are_jumpers no)
-			(property "Reference" "D"
-				(at 0.635 -3.81 0)
-				(show_name no)
-				(do_not_autoplace no)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-					(justify left)
-				)
-			)
-			(property "Value" "BAT54C"
-				(at -6.35 3.175 0)
-				(show_name no)
-				(do_not_autoplace no)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-					(justify left)
-				)
-			)
-			(property "Footprint" "Package_TO_SOT_SMD:SOT-23"
-				(at 1.905 3.175 0)
-				(show_name no)
-				(do_not_autoplace no)
-				(hide yes)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-					(justify left)
-				)
-			)
-			(property "Datasheet" "http://www.diodes.com/_files/datasheets/ds11005.pdf"
-				(at -2.032 0 0)
-				(show_name no)
-				(do_not_autoplace no)
-				(hide yes)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-				)
-			)
-			(property "Description" "dual schottky barrier diode, common cathode"
-				(at 0 0 0)
-				(show_name no)
-				(do_not_autoplace no)
-				(hide yes)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-				)
-			)
-			(property "ki_keywords" "schottky diode common cathode"
-				(at 0 0 0)
-				(show_name no)
-				(do_not_autoplace no)
-				(hide yes)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-				)
-			)
-			(property "ki_fp_filters" "SOT?23*"
-				(at 0 0 0)
-				(show_name no)
-				(do_not_autoplace no)
-				(hide yes)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-				)
-			)
-			(symbol "BAT54C_0_1"
-				(polyline
-					(pts
-						(xy -3.175 -1.27) (xy -3.175 1.27) (xy -1.27 0) (xy -3.175 -1.27)
-					)
-					(stroke
-						(width 0)
-						(type default)
-					)
-					(fill
-						(type none)
-					)
-				)
-				(polyline
-					(pts
-						(xy -1.905 1.27) (xy -1.905 1.016)
-					)
-					(stroke
-						(width 0)
-						(type default)
-					)
-					(fill
-						(type none)
-					)
-				)
-				(polyline
-					(pts
-						(xy -1.905 0) (xy 1.905 0)
-					)
-					(stroke
-						(width 0)
-						(type default)
-					)
-					(fill
-						(type none)
-					)
-				)
-				(polyline
-					(pts
-						(xy -1.27 1.27) (xy -1.905 1.27)
-					)
-					(stroke
-						(width 0)
-						(type default)
-					)
-					(fill
-						(type none)
-					)
-				)
-				(polyline
-					(pts
-						(xy -1.27 1.27) (xy -1.27 -1.27)
-					)
-					(stroke
-						(width 0)
-						(type default)
-					)
-					(fill
-						(type none)
-					)
-				)
-				(polyline
-					(pts
-						(xy -1.27 0) (xy -3.81 0)
-					)
-					(stroke
-						(width 0)
-						(type default)
-					)
-					(fill
-						(type none)
-					)
-				)
-				(polyline
-					(pts
-						(xy -1.27 -1.27) (xy -0.635 -1.27)
-					)
-					(stroke
-						(width 0)
-						(type default)
-					)
-					(fill
-						(type none)
-					)
-				)
-				(polyline
-					(pts
-						(xy -0.635 -1.27) (xy -0.635 -1.016)
-					)
-					(stroke
-						(width 0)
-						(type default)
-					)
-					(fill
-						(type none)
-					)
-				)
-				(circle
-					(center 0 0)
-					(radius 0.254)
-					(stroke
-						(width 0)
-						(type default)
-					)
-					(fill
-						(type outline)
-					)
-				)
-				(polyline
-					(pts
-						(xy 0.635 -1.27) (xy 0.635 -1.016)
-					)
-					(stroke
-						(width 0)
-						(type default)
-					)
-					(fill
-						(type none)
-					)
-				)
-				(polyline
-					(pts
-						(xy 1.27 1.27) (xy 1.27 -1.27)
-					)
-					(stroke
-						(width 0)
-						(type default)
-					)
-					(fill
-						(type none)
-					)
-				)
-				(polyline
-					(pts
-						(xy 1.27 1.27) (xy 1.905 1.27)
-					)
-					(stroke
-						(width 0)
-						(type default)
-					)
-					(fill
-						(type none)
-					)
-				)
-				(polyline
-					(pts
-						(xy 1.27 -1.27) (xy 0.635 -1.27)
-					)
-					(stroke
-						(width 0)
-						(type default)
-					)
-					(fill
-						(type none)
-					)
-				)
-				(polyline
-					(pts
-						(xy 1.905 1.27) (xy 1.905 1.016)
-					)
-					(stroke
-						(width 0)
-						(type default)
-					)
-					(fill
-						(type none)
-					)
-				)
-				(polyline
-					(pts
-						(xy 3.175 -1.27) (xy 3.175 1.27) (xy 1.27 0) (xy 3.175 -1.27)
-					)
-					(stroke
-						(width 0)
-						(type default)
-					)
-					(fill
-						(type none)
-					)
-				)
-				(polyline
-					(pts
-						(xy 3.81 0) (xy 1.27 0)
-					)
-					(stroke
-						(width 0)
-						(type default)
-					)
-					(fill
-						(type none)
-					)
-				)
-			)
-			(symbol "BAT54C_1_1"
-				(pin passive line
-					(at -7.62 0 0)
-					(length 3.81)
-					(name ""
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-					(number "1"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-				)
-				(pin passive line
-					(at 7.62 0 180)
-					(length 3.81)
-					(name ""
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-					(number "2"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-				)
-				(pin passive line
-					(at 0 -5.08 90)
-					(length 5.08)
-					(name ""
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-					(number "3"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-				)
+		(symbol "Interface:PCA9306" (pin_names (offset 1.016)) (exclude_from_sim no) (in_bom yes) (on_board yes) (in_pos_files yes) (duplicate_pin_numbers_are_jumpers no)
+			(property "Reference" "U" (at -7.62 11.43 0) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27)) (justify left)))
+			(property "Value" "PCA9306" (at 5.08 11.43 0) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27)) (justify left)))
+			(property "Footprint" "" (at -10.16 8.89 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27))))
+			(property "Datasheet" "http://www.ti.com/lit/ds/symlink/pca9306.pdf" (at -7.62 11.43 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27))))
+			(property "Description" "Dual bidirectional I2C Bus and SMBus voltage level translator" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27))))
+			(property "ki_keywords" "Dual bidirectional I2C Bus and SMBus voltage level translator" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27))))
+			(property "ki_fp_filters" "SSOP*2.95x2.8mm*P0.65mm* VSSOP*2.3x2mm*P0.5mm* X2SON*1.4x1mm*P0.35mm*" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27))))
+			(symbol "PCA9306_0_1" (rectangle (start -7.62 10.16) (end 7.62 -10.16) (stroke (width 0.254) (type default)) (fill (type background))))
+			(symbol "PCA9306_1_1"
+				(pin power_in line (at 0 -12.7 90) (length 2.54) (name "GND" (effects (font (size 1.27 1.27)))) (number "1" (effects (font (size 1.27 1.27)))))
+				(pin power_in line (at -2.54 12.7 270) (length 2.54) (name "VREF1" (effects (font (size 1.27 1.27)))) (number "2" (effects (font (size 1.27 1.27)))))
+				(pin bidirectional line (at -10.16 0 0) (length 2.54) (name "SCL1" (effects (font (size 1.27 1.27)))) (number "3" (effects (font (size 1.27 1.27)))))
+				(pin bidirectional line (at -10.16 -2.54 0) (length 2.54) (name "SDA1" (effects (font (size 1.27 1.27)))) (number "4" (effects (font (size 1.27 1.27)))))
+				(pin bidirectional line (at 10.16 -2.54 180) (length 2.54) (name "SDA2" (effects (font (size 1.27 1.27)))) (number "5" (effects (font (size 1.27 1.27)))))
+				(pin bidirectional line (at 10.16 0 180) (length 2.54) (name "SCL2" (effects (font (size 1.27 1.27)))) (number "6" (effects (font (size 1.27 1.27)))))
+				(pin power_in line (at 2.54 12.7 270) (length 2.54) (name "VREF2" (effects (font (size 1.27 1.27)))) (number "7" (effects (font (size 1.27 1.27)))))
+				(pin input line (at 10.16 2.54 180) (length 2.54) (name "EN" (effects (font (size 1.27 1.27)))) (number "8" (effects (font (size 1.27 1.27)))))
 			)
 			(embedded_fonts no)
 		)
@@ -6174,7 +5857,7 @@
 		)
 		(uuid "70edd1a5-5fee-4c7c-ac83-e6c6f6ed1968")
 	)
-	(global_label "DDC_SCL"
+	(global_label "DDC_SCL_3V3"
 		(shape bidirectional)
 		(at 166.37 144.78 180)
 		(effects
@@ -6238,7 +5921,7 @@
 		)
 		(uuid "fa675bf0-5d0f-49c2-ab50-7a487e10ee71")
 	)
-	(global_label "DDC_SDA"
+	(global_label "DDC_SDA_3V3"
 		(shape bidirectional)
 		(at 166.37 154.94 180)
 		(effects
@@ -6281,80 +5964,6 @@
 				)
 			)
 		)
-	)
-	(wire
-		(pts
-			(xy 33.02 139.7) (xy 29.21 139.7)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "3aca1c0a-a46d-4443-aa2f-051e8fc37c67")
-	)
-	(global_label "HDMI_5V"
-		(shape bidirectional)
-		(at 29.21 139.7 180)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify right)
-		)
-		(uuid "c9293454-ff85-4cda-a08c-f8216a12e8f4")
-		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 29.21 139.7 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-	)
-	(wire
-		(pts
-			(xy 48.26 139.7) (xy 52.07 139.7)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "0ce3518a-67af-4d6c-a775-47d6831a6f26")
-	)
-	(global_label "USB_VBUS"
-		(shape bidirectional)
-		(at 52.07 139.7 0)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left)
-		)
-		(uuid "4322774f-1a7c-4943-a6ca-b0186ac74377")
-		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 52.07 139.7 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-	)
-	(wire
-		(pts
-			(xy 40.64 144.78) (xy 40.64 149.86)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "9bacd231-15b9-414d-a4aa-f6a0f1ab9ff0")
 	)
 	(wire
 		(pts
@@ -6413,16 +6022,6 @@
 		(diameter 0)
 		(color 0 0 0 0)
 		(uuid "5554ee86-9b01-4fb9-a9c7-2e707f6cca61")
-	)
-	(label "VIN_5V"
-		(at 43.18 149.86 0)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left bottom)
-		)
-		(uuid "1c760558-be4c-4037-a9c3-0f17f976540c")
 	)
 	(wire
 		(pts
@@ -7662,7 +7261,7 @@
 	)
 	(wire
 		(pts
-			(xy 316.23 81.28) (xy 320.04 81.28)
+			(xy 316.23 71.12) (xy 320.04 71.12)
 		)
 		(stroke
 			(width 0)
@@ -7756,7 +7355,7 @@
 	)
 	(global_label "LED_DRV"
 		(shape bidirectional)
-		(at 320.04 81.28 0)
+		(at 320.04 71.12 0)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -7765,7 +7364,7 @@
 		)
 		(uuid "5d3697d1-42cf-46f7-a736-1acaa6d3ecc4")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 320.04 81.28 0)
+			(at 320.04 71.12 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -7869,7 +7468,7 @@
 		(uuid "9c82668e-76dd-4442-a6ee-62fe0dcae2ab")
 	)
 	(no_connect
-		(at 316.23 71.12)
+		(at 316.23 81.28)
 		(uuid "748f6e5e-dd5a-4b9f-ad0d-c70c5191c747")
 	)
 	(no_connect
@@ -14463,99 +14062,147 @@
 			)
 		)
 	)
-	(symbol
-		(lib_id "Diode:BAT54C")
-		(at 40.64 139.7 0)
-		(unit 1)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(in_pos_files yes)
-		(dnp no)
-		(uuid "fd7cf633-81a5-5d79-bf7a-1ad620db3847")
-		(property "Reference" "D1"
-			(at 40.64 132.08 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Value" "BAT54C"
-			(at 40.64 134.62 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Footprint" "hdmi-cec:SOT-23-3_L2.9-W1.3-P1.90-LS2.4-BR"
-			(at 40.64 139.7 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Datasheet" ""
-			(at 40.64 139.7 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Description" ""
-			(at 40.64 139.7 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "LCSC" "C37704"
-			(at 40.64 139.7 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(pin "1"
-			(uuid "d793dd3e-4528-5825-b447-46cbe4791160")
-		)
-		(pin "2"
-			(uuid "c647b9dd-b268-5773-9d1b-c2f74f19d42a")
-		)
-		(pin "3"
-			(uuid "b40030ac-53c8-5494-8610-22ef9cfac5c7")
-		)
-		(instances
-			(project "hdmi-cec"
-				(path "/d1f83add-0ff9-52f4-acd6-a6f8ec38997c"
-					(reference "D1")
-					(unit 1)
-				)
-			)
-		)
-	)
+	(text "DDC Level Shifter" (exclude_from_sim no) (at 205.74 116.84 0) (effects (font (size 2 2) (bold yes)) (justify left bottom)) (uuid "9768999a-646f-48b7-acbc-df3f11f3ffdc"))
+	(global_label "USB_VBUS" (shape bidirectional) (at 40.64 149.86 180) (effects (font (size 1.27 1.27)) (justify right)) (uuid "ecc7c96c-1206-4f0d-81e0-2a03231adb7b")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}" (at 40.64 149.86 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27)))))
+	(global_label "DDC_SCL_3V3" (shape bidirectional) (at 218.44 147.32 180) (effects (font (size 1.27 1.27)) (justify right)) (uuid "9cf0dcd1-e7ed-4121-9c50-bf0abdda7001")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}" (at 218.44 147.32 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27)))))
+	(global_label "DDC_SDA_3V3" (shape bidirectional) (at 218.44 149.86 180) (effects (font (size 1.27 1.27)) (justify right)) (uuid "4dada3c3-5a67-4b56-922f-34922d7eaa83")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}" (at 218.44 149.86 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27)))))
+	(global_label "DDC_SCL" (shape bidirectional) (at 248.92 147.32 0) (effects (font (size 1.27 1.27)) (justify left)) (uuid "24b39e6c-19c2-487c-b031-64f39b7efa6d")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}" (at 248.92 147.32 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27)))))
+	(global_label "DDC_SDA" (shape bidirectional) (at 248.92 149.86 0) (effects (font (size 1.27 1.27)) (justify left)) (uuid "8c505d8c-7410-430b-906b-1a08268408f5")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}" (at 248.92 149.86 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27)))))
+	(global_label "USB_VBUS" (shape bidirectional) (at 236.22 118.11 90) (effects (font (size 1.27 1.27)) (justify left)) (uuid "5f294cab-fbd0-4543-a670-96977d265d94")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}" (at 236.22 118.11 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27)))))
+	(global_label "DDC_SCL_3V3" (shape bidirectional) (at 203.2 129.54 270) (effects (font (size 1.27 1.27)) (justify right)) (uuid "7cd75a30-2b51-40b0-9ccd-83c1e741a908")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}" (at 203.2 129.54 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27)))))
+	(global_label "DDC_SDA_3V3" (shape bidirectional) (at 210.82 129.54 270) (effects (font (size 1.27 1.27)) (justify right)) (uuid "5b78bf7d-c222-4a0a-b855-75b4355e58ab")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}" (at 210.82 129.54 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27)))))
+	(global_label "DDC_SCL" (shape bidirectional) (at 345.44 223.52 180) (effects (font (size 1.27 1.27)) (justify right)) (uuid "9fb7da4b-4638-4196-8134-43566e822089")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}" (at 345.44 223.52 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27)))))
+	(global_label "DDC_SDA" (shape bidirectional) (at 345.44 228.6 180) (effects (font (size 1.27 1.27)) (justify right)) (uuid "d688365c-cdb0-4217-b060-39dd9664fc70")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}" (at 345.44 228.6 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27)))))
+	(global_label "CEC" (shape bidirectional) (at 345.44 233.68 180) (effects (font (size 1.27 1.27)) (justify right)) (uuid "69bb6845-277e-4592-8da6-198a38b88800")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}" (at 345.44 233.68 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27)))))
+	(wire (pts (xy 223.52 147.32) (xy 218.44 147.32)) (stroke (width 0) (type default)) (uuid "8c934e2a-c7f2-4a3f-8a17-d752bd7c8b18"))
+	(wire (pts (xy 223.52 149.86) (xy 218.44 149.86)) (stroke (width 0) (type default)) (uuid "11e17768-02ae-43e0-b7eb-f3032a036fc6"))
+	(wire (pts (xy 243.84 147.32) (xy 248.92 147.32)) (stroke (width 0) (type default)) (uuid "676ca3f0-585c-4b98-9b13-5f9a81b159d0"))
+	(wire (pts (xy 243.84 149.86) (xy 248.92 149.86)) (stroke (width 0) (type default)) (uuid "54a80e18-ced0-4a85-9f63-a45f7d97762a"))
+	(wire (pts (xy 243.84 144.78) (xy 246.38 144.78)) (stroke (width 0) (type default)) (uuid "3d530d0d-04bf-44b8-a049-909422c3c54b"))
+	(wire (pts (xy 246.38 144.78) (xy 246.38 130.81)) (stroke (width 0) (type default)) (uuid "cfe23ffc-6a70-4507-a162-efa351991221"))
+	(wire (pts (xy 246.38 130.81) (xy 236.22 130.81)) (stroke (width 0) (type default)) (uuid "bdb039e8-c931-49b0-a90b-f45322eb90f2"))
+	(wire (pts (xy 236.22 134.62) (xy 236.22 130.81)) (stroke (width 0) (type default)) (uuid "1d5af474-1e46-4a21-9266-bc7026f49e06"))
+	(wire (pts (xy 236.22 130.81) (xy 236.22 128.27)) (stroke (width 0) (type default)) (uuid "236bd5b1-041a-4b35-af04-e3270ffa9be0"))
+	(wire (pts (xy 236.22 120.65) (xy 236.22 118.11)) (stroke (width 0) (type default)) (uuid "0712f55e-505f-403f-835a-a264ce8f122c"))
+	(wire (pts (xy 231.14 134.62) (xy 231.14 129.54)) (stroke (width 0) (type default)) (uuid "321ecf0e-cb87-45e9-a11f-ffdd4d683f8d"))
+	(wire (pts (xy 350.52 223.52) (xy 345.44 223.52)) (stroke (width 0) (type default)) (uuid "420cde4b-6448-40e7-9486-8be711748660"))
+	(wire (pts (xy 350.52 228.6) (xy 345.44 228.6)) (stroke (width 0) (type default)) (uuid "e92df235-93a2-41ea-a012-690fdc40b23f"))
+	(wire (pts (xy 350.52 233.68) (xy 345.44 233.68)) (stroke (width 0) (type default)) (uuid "4e25e9de-4b69-47d7-a272-f76b7eb88b6a"))
+	(junction (at 236.22 130.81) (diameter 0) (color 0 0 0 0) (uuid "a276e798-4e88-4682-b869-2b233d8efd1a"))
+	(symbol (lib_id "Interface:PCA9306") (at 233.68 147.32 0) (unit 1) (body_style 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (in_pos_files yes) (dnp no) (uuid "3ff946e3-20ab-431a-ae18-9ea250e14c0b")
+		(property "Reference" "U4" (at 236.22 158.75 0) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27)) (justify left)))
+		(property "Value" "PCA9306DCUR" (at 236.22 161.29 0) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27)) (justify left)))
+		(property "Footprint" "Package_SO:VSSOP-8_2.3x2mm_P0.5mm" (at 233.68 147.32 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27))))
+		(property "Datasheet" "http://www.ti.com/lit/ds/symlink/pca9306.pdf" (at 233.68 147.32 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27))))
+		(property "Description" "Dual bidirectional I2C Bus and SMBus voltage level translator" (at 233.68 147.32 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27))))
+		(property "LCSC" "C33196" (at 233.68 147.32 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27))))
+		(pin "1" (uuid "e0eff354-0826-4c9d-8442-51df69423ee7")) (pin "2" (uuid "0aa5abd0-9e03-48d1-bf8d-a9eb8487672d"))
+		(pin "3" (uuid "92588e6d-748e-40f9-81bd-5e31e28928af")) (pin "4" (uuid "b4403321-310c-4c7b-98ed-c04a4c680c75"))
+		(pin "5" (uuid "42715134-390d-4553-ae98-3df77c6e8086")) (pin "6" (uuid "386e9e75-fb4f-49c9-b14b-abf858fbe05f"))
+		(pin "7" (uuid "0889ecd5-f0e3-4f38-bdc8-aadc611de83c")) (pin "8" (uuid "3864ce63-65cf-4337-8cc6-02fa67fc0df5"))
+		(instances (project "hdmi-cec" (path "/d1f83add-0ff9-52f4-acd6-a6f8ec38997c" (reference "U4") (unit 1)))))
+	(symbol (lib_id "Device:R") (at 236.22 124.46 0) (unit 1) (body_style 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (in_pos_files yes) (dnp no) (uuid "be63debd-5401-4759-8b21-18c12ebad1f8")
+		(property "Reference" "R9" (at 238.76 123.19 0) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27)) (justify left)))
+		(property "Value" "200k" (at 238.76 125.73 0) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27)) (justify left)))
+		(property "Footprint" "hdmi-cec:R0402" (at 236.22 124.46 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27))))
+		(property "Datasheet" "" (at 236.22 124.46 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27))))
+		(property "Description" "" (at 236.22 124.46 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27))))
+		(property "LCSC" "C25764" (at 236.22 124.46 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27))))
+		(pin "1" (uuid "be8c5846-c91f-4692-a3ad-817eaa1fcbb8")) (pin "2" (uuid "cbefa8ed-1e15-4d31-a848-5bbba1f7250e"))
+		(instances (project "hdmi-cec" (path "/d1f83add-0ff9-52f4-acd6-a6f8ec38997c" (reference "R9") (unit 1)))))
+	(symbol (lib_id "Device:R") (at 203.2 125.73 0) (unit 1) (body_style 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (in_pos_files yes) (dnp no) (uuid "7b218928-b853-4c0f-9745-b0efc0960d6f")
+		(property "Reference" "R10" (at 205.74 124.46 0) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27)) (justify left)))
+		(property "Value" "10k" (at 205.74 127 0) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27)) (justify left)))
+		(property "Footprint" "hdmi-cec:R0402" (at 203.2 125.73 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27))))
+		(property "Datasheet" "" (at 203.2 125.73 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27))))
+		(property "Description" "" (at 203.2 125.73 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27))))
+		(property "LCSC" "C25744" (at 203.2 125.73 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27))))
+		(pin "1" (uuid "bcb5aa16-2552-4d8c-beb1-72ff315f4ada")) (pin "2" (uuid "4ea47925-3857-4117-8123-35286ac49689"))
+		(instances (project "hdmi-cec" (path "/d1f83add-0ff9-52f4-acd6-a6f8ec38997c" (reference "R10") (unit 1)))))
+	(symbol (lib_id "Device:R") (at 210.82 125.73 0) (unit 1) (body_style 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (in_pos_files yes) (dnp no) (uuid "09ec351a-08f2-4d7a-b635-f647756a9bc1")
+		(property "Reference" "R11" (at 213.36 124.46 0) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27)) (justify left)))
+		(property "Value" "10k" (at 213.36 127 0) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27)) (justify left)))
+		(property "Footprint" "hdmi-cec:R0402" (at 210.82 125.73 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27))))
+		(property "Datasheet" "" (at 210.82 125.73 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27))))
+		(property "Description" "" (at 210.82 125.73 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27))))
+		(property "LCSC" "C25744" (at 210.82 125.73 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27))))
+		(pin "1" (uuid "5aff06e2-6c46-45eb-929a-05165deeeb89")) (pin "2" (uuid "0c44dced-5afb-425f-b80f-ea9232e49278"))
+		(instances (project "hdmi-cec" (path "/d1f83add-0ff9-52f4-acd6-a6f8ec38997c" (reference "R11") (unit 1)))))
+	(symbol (lib_id "Connector:TestPoint") (at 350.52 223.52 270) (unit 1) (body_style 1) (exclude_from_sim no) (in_bom no) (on_board yes) (in_pos_files yes) (dnp no) (uuid "f63dbd03-916d-46cc-b644-25eabcbc587d")
+		(property "Reference" "TP8" (at 358.14 223.52 270) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27))))
+		(property "Value" "DDC_SCL" (at 365.76 223.52 270) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27))))
+		(property "Footprint" "hdmi-cec:TestPoint_Pad_D0.8mm" (at 350.52 223.52 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27))))
+		(property "Datasheet" "" (at 350.52 223.52 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27))))
+		(property "Description" "" (at 350.52 223.52 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27))))
+		(pin "1" (uuid "f675aa11-c1bb-44d6-9b05-992c6088054a"))
+		(instances (project "hdmi-cec" (path "/d1f83add-0ff9-52f4-acd6-a6f8ec38997c" (reference "TP8") (unit 1)))))
+	(symbol (lib_id "Connector:TestPoint") (at 350.52 228.6 270) (unit 1) (body_style 1) (exclude_from_sim no) (in_bom no) (on_board yes) (in_pos_files yes) (dnp no) (uuid "a5bfc6ad-77c7-4a70-abe1-1eab9416fe62")
+		(property "Reference" "TP9" (at 358.14 228.6 270) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27))))
+		(property "Value" "DDC_SDA" (at 365.76 228.6 270) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27))))
+		(property "Footprint" "hdmi-cec:TestPoint_Pad_D0.8mm" (at 350.52 228.6 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27))))
+		(property "Datasheet" "" (at 350.52 228.6 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27))))
+		(property "Description" "" (at 350.52 228.6 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27))))
+		(pin "1" (uuid "12f5306c-d070-4e5f-a91e-95ee329ad3a7"))
+		(instances (project "hdmi-cec" (path "/d1f83add-0ff9-52f4-acd6-a6f8ec38997c" (reference "TP9") (unit 1)))))
+	(symbol (lib_id "Connector:TestPoint") (at 350.52 233.68 270) (unit 1) (body_style 1) (exclude_from_sim no) (in_bom no) (on_board yes) (in_pos_files yes) (dnp no) (uuid "114b8bca-1ad5-4af4-8a8c-270900d02c70")
+		(property "Reference" "TP10" (at 358.14 233.68 270) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27))))
+		(property "Value" "CEC" (at 365.76 233.68 270) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27))))
+		(property "Footprint" "hdmi-cec:TestPoint_Pad_D0.8mm" (at 350.52 233.68 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27))))
+		(property "Datasheet" "" (at 350.52 233.68 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27))))
+		(property "Description" "" (at 350.52 233.68 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27))))
+		(pin "1" (uuid "62a545c7-466f-45b5-9f4c-e6fa4914f5c7"))
+		(instances (project "hdmi-cec" (path "/d1f83add-0ff9-52f4-acd6-a6f8ec38997c" (reference "TP10") (unit 1)))))
+	(symbol (lib_id "power:+3V3") (at 231.14 129.54 0) (unit 1) (body_style 1) (exclude_from_sim no) (in_bom no) (on_board yes) (in_pos_files yes) (dnp no) (uuid "00e9e2dc-bb25-492d-af6a-43577d60d9b8")
+		(property "Reference" "#PWR060" (at 231.14 129.54 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27))))
+		(property "Value" "+3V3" (at 231.14 125.984 0) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27))))
+		(property "Footprint" "" (at 231.14 129.54 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27))))
+		(property "Datasheet" "" (at 231.14 129.54 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27))))
+		(property "Description" "" (at 231.14 129.54 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27))))
+		(pin "1" (uuid "4e7ec5e9-2162-4a98-831f-be1a5197584d"))
+		(instances (project "hdmi-cec" (path "/d1f83add-0ff9-52f4-acd6-a6f8ec38997c" (reference "#PWR060") (unit 1)))))
+	(symbol (lib_id "power:GND") (at 233.68 160.02 0) (unit 1) (body_style 1) (exclude_from_sim no) (in_bom no) (on_board yes) (in_pos_files yes) (dnp no) (uuid "937627f4-f953-4b6a-8d24-abfe59307f95")
+		(property "Reference" "#PWR061" (at 233.68 166.37 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27))))
+		(property "Value" "GND" (at 233.68 164.084 0) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27))))
+		(property "Footprint" "" (at 233.68 160.02 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27))))
+		(property "Datasheet" "" (at 233.68 160.02 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27))))
+		(property "Description" "" (at 233.68 160.02 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27))))
+		(pin "1" (uuid "5e4c568a-5895-4be8-a872-7ed960000ba4"))
+		(instances (project "hdmi-cec" (path "/d1f83add-0ff9-52f4-acd6-a6f8ec38997c" (reference "#PWR061") (unit 1)))))
+	(symbol (lib_id "power:+3V3") (at 203.2 121.92 0) (unit 1) (body_style 1) (exclude_from_sim no) (in_bom no) (on_board yes) (in_pos_files yes) (dnp no) (uuid "5b0bf6a3-ee19-4230-97d5-bf9f7e207c77")
+		(property "Reference" "#PWR062" (at 203.2 121.92 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27))))
+		(property "Value" "+3V3" (at 203.2 118.364 0) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27))))
+		(property "Footprint" "" (at 203.2 121.92 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27))))
+		(property "Datasheet" "" (at 203.2 121.92 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27))))
+		(property "Description" "" (at 203.2 121.92 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27))))
+		(pin "1" (uuid "fa7942a0-af2c-4135-9af5-e6e8f90469ba"))
+		(instances (project "hdmi-cec" (path "/d1f83add-0ff9-52f4-acd6-a6f8ec38997c" (reference "#PWR062") (unit 1)))))
+	(symbol (lib_id "power:+3V3") (at 210.82 121.92 0) (unit 1) (body_style 1) (exclude_from_sim no) (in_bom no) (on_board yes) (in_pos_files yes) (dnp no) (uuid "effd466c-782b-4c2a-b755-d97268962c7d")
+		(property "Reference" "#PWR063" (at 210.82 121.92 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27))))
+		(property "Value" "+3V3" (at 210.82 118.364 0) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27))))
+		(property "Footprint" "" (at 210.82 121.92 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27))))
+		(property "Datasheet" "" (at 210.82 121.92 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27))))
+		(property "Description" "" (at 210.82 121.92 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27))))
+		(pin "1" (uuid "29f52d2d-4d85-4b1b-9e9e-e2fab6daf796"))
+		(instances (project "hdmi-cec" (path "/d1f83add-0ff9-52f4-acd6-a6f8ec38997c" (reference "#PWR063") (unit 1)))))
+	(symbol (lib_id "power:PWR_FLAG") (at 246.38 130.81 0) (unit 1) (body_style 1) (exclude_from_sim no) (in_bom no) (on_board yes) (in_pos_files yes) (dnp no) (uuid "043ed838-9f84-44b6-a0aa-048165e8fb01")
+		(property "Reference" "#FLG004" (at 246.38 130.81 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27))))
+		(property "Value" "PWR_FLAG" (at 246.38 127 0) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27))))
+		(property "Footprint" "" (at 246.38 130.81 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27))))
+		(property "Datasheet" "" (at 246.38 130.81 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27))))
+		(property "Description" "" (at 246.38 130.81 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27))))
+		(pin "1" (uuid "c1a9ce09-b28e-431a-b3f0-70ee414b11b3"))
+		(instances (project "hdmi-cec" (path "/d1f83add-0ff9-52f4-acd6-a6f8ec38997c" (reference "#FLG004") (unit 1)))))
 	(sheet_instances
 		(path "/"
 			(page "1")
