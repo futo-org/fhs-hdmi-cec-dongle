@@ -1,0 +1,38 @@
+name: hardware
+
+on:
+  push:
+    paths: ["hardware/pcb/**", ".github/workflows/hardware.yml"]
+  pull_request:
+    paths: ["hardware/pcb/**", ".github/workflows/hardware.yml"]
+
+env:
+  BOARD: hdmi-cec.kicad_pcb
+  OUT: production
+  GERBER_LAYERS: F.Cu,In1.Cu,In2.Cu,B.Cu,F.Paste,B.Paste,F.Silkscreen,B.Silkscreen,F.Mask,B.Mask,Edge.Cuts
+
+jobs:
+  production:
+    runs-on: ubuntu-latest
+    container:
+      image: kicad/kicad:10.0-full
+      options: --user root
+    defaults:
+      run:
+        working-directory: hardware/pcb
+    steps:
+      - uses: actions/checkout@v4
+      - name: Gerbers
+        run: kicad-cli pcb export gerbers --check-zones --layers "$GERBER_LAYERS" -o "$OUT/gerbers/" "$BOARD"
+      - name: Drill
+        run: kicad-cli pcb export drill --excellon-separate-th -o "$OUT/gerbers/" "$BOARD"
+      - name: STEP
+        run: kicad-cli pcb export step --subst-models -o "$OUT/hdmi-cec.step" "$BOARD"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hdmi-cec-gerbers
+          path: hardware/pcb/production/gerbers/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hdmi-cec-step
+          path: hardware/pcb/production/hdmi-cec.step
