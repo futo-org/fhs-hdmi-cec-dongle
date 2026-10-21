@@ -40,6 +40,10 @@ static uint8_t ev_head;
 static uint8_t ev_tail;
 static uint32_t events_dropped;
 
+/* Kept out of the event queue so received frames cannot crowd it out. */
+static uint8_t tx_done_valid;
+static struct fhs_cec_ev_tx_done tx_done;
+
 static tx_owner_t tx_owner;
 static uint8_t tx_seq;
 static uint8_t tx_frame[CEC_FRAME_MAX];
@@ -75,6 +79,26 @@ static void queue_event(const void *data, uint8_t len)
 static void clear_events(void)
 {
     ev_tail = ev_head;
+    tx_done_valid = 0;
+}
+
+static void queue_tx_done(const struct fhs_cec_ev_tx_done *ev)
+{
+    tx_done = *ev;
+    tx_done_valid = 1;
+}
+
+static void send_next_event(void)
+{
+    if (tx_done_valid) {
+        if (usb_event_send((const uint8_t *)&tx_done, sizeof(tx_done))) {
+            tx_done_valid = 0;
+        }
+        return;
+    }
+    if (ev_tail != ev_head && usb_event_send(events[ev_tail].data, events[ev_tail].len)) {
+        ev_tail = (uint8_t)((ev_tail + 1U) % EVENT_QUEUE);
+    }
 }
 
 static uint8_t tx_status(cec_tx_result_t r)
@@ -110,7 +134,7 @@ static void report_tx(uint8_t seq, uint8_t st)
         return;
     }
 #endif
-    queue_event(&ev, sizeof(ev));
+    queue_tx_done(&ev);
 }
 
 static int wanted(const cec_frame_t *f)
@@ -294,6 +318,7 @@ bool adapter_control(uint8_t rhport, uint8_t stage, tusb_control_request_t const
         return setup(rhport, req);
     }
     if (stage == CONTROL_STAGE_DATA && req->bRequest == FHS_CEC_REQ_TRANSMIT) {
+        TU_VERIFY(tud_control_xferred_len() == req->wLength);
         start_host_transmit((uint8_t)req->wValue, (uint8_t)req->wLength);
     }
     return true;
@@ -324,13 +349,11 @@ void adapter_task(void)
 #if FHS_CEC_DEBUG_SHELL
     if (late_valid && (HAL_GetTick() - late_at_ms) < 0x80000000UL) {
         late_valid = 0;
-        queue_event(&late_event, sizeof(late_event));
+        queue_tx_done(&late_event);
     }
 #endif
 
-    if (ev_tail != ev_head && usb_event_send(events[ev_tail].data, events[ev_tail].len)) {
-        ev_tail = (uint8_t)((ev_tail + 1U) % EVENT_QUEUE);
-    }
+    send_next_event();
 }
 
 #if FHS_CEC_DEBUG_SHELL

@@ -14,7 +14,7 @@ run = "make clean"
 [tasks.load]
 description = "insmod the freshly built module"
 depends = ["build"]
-run = "sudo insmod fhs-cec.ko"
+run = ["sudo modprobe cec", "sudo insmod fhs-cec.ko"]
 
 [tasks.unload]
 description = "rmmod the module"

@@ -149,6 +149,9 @@ bool tud_control_xfer(uint8_t rhport, tusb_control_request_t const * request, vo
 // Send STATUS (zero length) packet
 bool tud_control_status(uint8_t rhport, tusb_control_request_t const * request);
 
+// Bytes moved so far in the current Data stage. A short OUT packet can end it before wLength.
+uint16_t tud_control_xferred_len(void);
+
 //--------------------------------------------------------------------+
 // Application Callbacks
 //--------------------------------------------------------------------+

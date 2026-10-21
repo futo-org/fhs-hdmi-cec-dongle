@@ -8,6 +8,7 @@
 #include "tusb.h"
 #include "device/usbd_pvt.h"
 
+#include <stdio.h>
 #include <string.h>
 
 #define EVENT_POLL_INTERVAL_MS 1U
@@ -255,6 +256,9 @@ void usb_init(void)
     __HAL_RCC_USB_CLK_ENABLE();
     HAL_NVIC_SetPriority(BOARD_USB_IRQn, BOARD_USB_IRQ_PRIORITY, 0);
     tusb_init(0, &dev_init);
+#if FHS_CEC_DEBUG_SHELL
+    setvbuf(stdout, NULL, _IONBF, 0);    /* no libc buffering, printf goes now */
+#endif
 }
 
 #if FHS_CEC_DEBUG_SHELL
@@ -293,30 +297,33 @@ int usb_console_getc(void)
     return c;
 }
 
-static void console_put(uint8_t c)
+static int console_put(uint8_t c, uint32_t start)
 {
-    uint32_t start = HAL_GetTick();
-
     while (tud_cdc_write_char((char)c) == 0U) {
         tud_cdc_write_flush();
         if (in_task || !tud_cdc_connected() ||
             (HAL_GetTick() - start) > CONSOLE_STALL_MS) {
-            return;
+            return 0;
         }
         usb_task();
     }
+    return 1;
 }
 
 /* Overrides the weak one in syscall.c, which goes a char at a time. */
 int _write(int file, char *ptr, int len)
 {
+    uint32_t start = HAL_GetTick();
+
     (void)file;
 
     for (int i = 0; i < len; i++) {
-        if (ptr[i] == '\n') {
-            console_put('\r');
+        if (ptr[i] == '\n' && !console_put('\r', start)) {
+            break;
         }
-        console_put((uint8_t)ptr[i]);
+        if (!console_put((uint8_t)ptr[i], start)) {
+            break;
+        }
     }
     tud_cdc_write_flush();
     return len;

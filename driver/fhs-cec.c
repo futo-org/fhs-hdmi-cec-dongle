@@ -58,19 +58,25 @@ struct fhs_cec {
 	u16 log_addr_mask;
 };
 
+static int fhs_cec_out_locked(struct fhs_cec *fc, u8 request, u16 value,
+			      const void *data, u16 size)
+{
+	lockdep_assert_held(&fc->io_lock);
+
+	if (fc->disconnected)
+		return -ENODEV;
+	return usb_control_msg_send(fc->udev, 0, request, FHS_CEC_REQ_OUT,
+				    value, fc->ifnum, data, size,
+				    FHS_CEC_CTRL_TIMEOUT_MS, GFP_KERNEL);
+}
+
 static int fhs_cec_out(struct fhs_cec *fc, u8 request, u16 value,
 		       const void *data, u16 size)
 {
 	int ret;
 
 	mutex_lock(&fc->io_lock);
-	if (fc->disconnected)
-		ret = -ENODEV;
-	else
-		ret = usb_control_msg_send(fc->udev, 0, request,
-					   FHS_CEC_REQ_OUT, value, fc->ifnum,
-					   data, size, FHS_CEC_CTRL_TIMEOUT_MS,
-					   GFP_KERNEL);
+	ret = fhs_cec_out_locked(fc, request, value, data, size);
 	mutex_unlock(&fc->io_lock);
 	return ret;
 }
@@ -124,14 +130,16 @@ static int fhs_cec_adap_enable(struct cec_adapter *adap, bool enable)
 static int fhs_cec_adap_log_addr(struct cec_adapter *adap, u8 log_addr)
 {
 	struct fhs_cec *fc = cec_get_drvdata(adap);
+	int ret;
 
 	if (log_addr == CEC_LOG_ADDR_INVALID)
 		fc->log_addr_mask = 0;
 	else
 		fc->log_addr_mask |= BIT(log_addr);
 
-	return fhs_cec_out(fc, FHS_CEC_REQ_SET_LOG_ADDRS, fc->log_addr_mask,
-			   NULL, 0);
+	ret = fhs_cec_out(fc, FHS_CEC_REQ_SET_LOG_ADDRS, fc->log_addr_mask,
+			  NULL, 0);
+	return log_addr == CEC_LOG_ADDR_INVALID ? 0 : ret;
 }
 
 static int fhs_cec_adap_monitor_all_enable(struct cec_adapter *adap,
@@ -351,6 +359,24 @@ static int fhs_cec_parse_phys_addr(const char *buf, u16 *pa)
 	return kstrtou16(buf, 16, pa);
 }
 
+/* Once a port is 0, the ones below it must be too: 1.0.2.0 is not a valid address. */
+static bool fhs_cec_phys_addr_valid(u16 pa)
+{
+	bool seen_zero = false;
+	int shift;
+
+	if (pa == CEC_PHYS_ADDR_INVALID)
+		return true;
+	for (shift = 12; shift >= 0; shift -= 4) {
+		bool zero = !((pa >> shift) & 0xf);
+
+		if (seen_zero && !zero)
+			return false;
+		seen_zero |= zero;
+	}
+	return true;
+}
+
 static ssize_t stored_phys_addr_show(struct device *dev,
 				     struct device_attribute *attr, char *buf)
 {
@@ -378,6 +404,8 @@ static ssize_t stored_phys_addr_store(struct device *dev,
 	ret = fhs_cec_parse_phys_addr(buf, &pa);
 	if (ret)
 		return ret;
+	if (!fhs_cec_phys_addr_valid(pa))
+		return -EINVAL;
 
 	ret = fhs_cec_out(fc, FHS_CEC_REQ_SET_PHYS_ADDR, pa, NULL, 0);
 	if (ret)
@@ -400,9 +428,10 @@ static u16 fhs_cec_initial_phys_addr(struct fhs_cec *fc,
 {
 	if (phys_addr < 0)
 		return fhs_cec_info_phys_addr(info);
-	if (phys_addr > CEC_PHYS_ADDR_INVALID) {
+	if (phys_addr > CEC_PHYS_ADDR_INVALID ||
+	    !fhs_cec_phys_addr_valid(phys_addr)) {
 		dev_warn(&fc->intf->dev,
-			 "phys_addr %#x out of range, using the stored one\n",
+			 "phys_addr %#x is not a valid address, using the stored one\n",
 			 phys_addr);
 		return fhs_cec_info_phys_addr(info);
 	}
@@ -531,6 +560,8 @@ static void fhs_cec_disconnect(struct usb_interface *intf)
 	cancel_work_sync(&fc->event_work);
 
 	mutex_lock(&fc->io_lock);
+	/* An unbind leaves the dongle powered, so stop it ACKing; fails on unplug. */
+	fhs_cec_out_locked(fc, FHS_CEC_REQ_SET_ENABLE, 0, NULL, 0);
 	fc->disconnected = true;
 	mutex_unlock(&fc->io_lock);
 

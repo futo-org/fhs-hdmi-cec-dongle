@@ -117,7 +117,7 @@ int edid_phys_addr(const uint8_t *ext, uint16_t *out)
     uint8_t end = ext[CTA_DTD_OFFSET];
     uint8_t i = CTA_DATA_BLOCKS_START;
 
-    if (ext[0] != CTA_EXT_TAG || end > EDID_BLOCK_SIZE) {
+    if (ext[0] != CTA_EXT_TAG || end >= EDID_BLOCK_SIZE) {
         return 0;
     }
     while (i < end) {
@@ -125,6 +125,9 @@ int edid_phys_addr(const uint8_t *ext, uint16_t *out)
         uint8_t len = ext[i] & 0x1FU;
         const uint8_t *body = &ext[i + 1U];
 
+        if (i + 1U + len > end) {
+            return 0;
+        }
         if (tag == CTA_TAG_VENDOR && len >= HDMI_VSDB_MIN_LEN &&
             body[0] == hdmi_oui[0] && body[1] == hdmi_oui[1] && body[2] == hdmi_oui[2]) {
             *out = (uint16_t)((body[3] << 8) | body[4]);

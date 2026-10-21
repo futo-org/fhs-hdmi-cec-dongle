@@ -893,6 +893,10 @@ bool tud_control_xfer(uint8_t rhport, const tusb_control_request_t* request, voi
   return true;
 }
 
+uint16_t tud_control_xferred_len(void) {
+  return _usbd_dev.ctrl_xfer.total_xferred;
+}
+
 // Callback when a transaction completes on the DATA stage or Status stage of EP0
 static bool usbd_control_xfer_cb(uint8_t rhport, uint8_t ep_addr, xfer_result_t result, uint32_t xferred_bytes) {
   (void) result;
@@ -963,8 +967,22 @@ static bool invoke_class_control(uint8_t rhport, usbd_class_driver_t const * dri
   return driver->control_xfer_cb(rhport, CONTROL_STAGE_SETUP, request);
 }
 
+// A getter sent as OUT would have the host write into the response buffer.
+static bool std_getter_dir_ok(tusb_control_request_t const * p_request) {
+  switch (p_request->bRequest) { //-V2520
+    case TUSB_REQ_GET_STATUS:
+    case TUSB_REQ_GET_CONFIGURATION:
+    case TUSB_REQ_GET_DESCRIPTOR:
+    case TUSB_REQ_GET_INTERFACE:
+      return p_request->bmRequestType_bit.direction == TUSB_DIR_IN;
+    default:
+      return true;
+  }
+}
+
 // Process a standard request to the device recipient.
 static bool process_std_device_request(uint8_t rhport, tusb_control_request_t const * p_request) {
+  TU_VERIFY(std_getter_dir_ok(p_request));
   switch (p_request->bRequest) { //-V2520
     case TUSB_REQ_SET_ADDRESS:
       // Depending on mcu, status phase could be sent either before or after changing device address,
@@ -1158,6 +1176,7 @@ static bool process_setup_received(uint8_t rhport, tusb_control_request_t const 
         // For GET_INTERFACE and SET_INTERFACE, it is mandatory to respond even if the class
         // driver doesn't use alternate settings or implement this
         TU_VERIFY(TUSB_REQ_TYPE_STANDARD == p_request->bmRequestType_bit.type);
+        TU_VERIFY(std_getter_dir_ok(p_request));
 
         // Clear complete callback if driver set since it can also stall the request.
         ctrl_xfer->complete_cb = NULL;
@@ -1166,6 +1185,12 @@ static bool process_setup_received(uint8_t rhport, tusb_control_request_t const 
           case TUSB_REQ_GET_INTERFACE: {
             uint8_t alternate = 0;
             tud_control_xfer(rhport, p_request, &alternate, 1);
+            break;
+          }
+
+          case TUSB_REQ_GET_STATUS: {
+            uint16_t status = 0;
+            tud_control_xfer(rhport, p_request, &status, 2);
             break;
           }
 
@@ -1194,6 +1219,7 @@ static bool process_setup_received(uint8_t rhport, tusb_control_request_t const 
         return invoke_class_control(rhport, driver, p_request);
       } else {
         // Handle STD request to endpoint
+        TU_VERIFY(std_getter_dir_ok(p_request));
         switch (p_request->bRequest) { //-V2520
           case TUSB_REQ_GET_STATUS: {
             uint16_t status = usbd_edpt_stalled(rhport, ep_addr) ? 0x0001u : 0x0000u;
