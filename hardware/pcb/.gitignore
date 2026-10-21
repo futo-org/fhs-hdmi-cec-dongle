@@ -28,3 +28,6 @@ fab/
 *.net
 *.dsn
 *.ses
+
+# Production outputs (built in CI)
+production/
