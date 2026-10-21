@@ -8586,7 +8586,7 @@
 				)
 			)
 		)
-		(property "Value" "1k"
+		(property "Value" "100R"
 			(at 266.7 201.93 90)
 			(show_name no)
 			(do_not_autoplace no)
@@ -8629,7 +8629,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C11702"
+		(property "LCSC" "C25076"
 			(at 266.7 199.39 0)
 			(hide yes)
 			(show_name no)
@@ -12934,7 +12934,7 @@
 				)
 			)
 		)
-		(property "Value" "LED"
+		(property "Value" "Blue LED"
 			(at 287.02 204.47 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -12977,7 +12977,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C130720"
+		(property "LCSC" "C130724"
 			(at 287.02 199.39 0)
 			(hide yes)
 			(show_name no)
@@ -14527,7 +14527,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C916424"
+		(property "LCSC" "C37704"
 			(at 40.64 139.7 0)
 			(hide yes)
 			(show_name no)
