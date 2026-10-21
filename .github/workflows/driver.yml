@@ -1,0 +1,75 @@
+name: driver
+
+on:
+  push:
+    paths: ["driver/**", ".github/workflows/driver.yml"]
+  pull_request:
+    paths: ["driver/**", ".github/workflows/driver.yml"]
+
+jobs:
+  build:
+    name: build (${{ matrix.name }})
+    runs-on: ubuntu-latest
+    container: ${{ matrix.image }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: debian-bookworm-6.1
+            image: debian:bookworm
+            install: apt-get update -qq && apt-get install -y -qq build-essential kmod linux-headers-amd64
+            kdir: /usr/src/linux-headers-*-amd64
+          - name: alpine-3.20-6.6-lts
+            image: alpine:3.20
+            install: apk add --no-cache build-base bash perl elfutils-dev kmod linux-lts-dev
+            kdir: /usr/src/linux-headers-*-lts
+          - name: ubuntu-24.04
+            image: ubuntu:24.04
+            install: apt-get update -qq && apt-get install -y -qq build-essential kmod linux-headers-generic
+            kdir: /usr/src/linux-headers-*-generic
+          - name: debian-trixie-6.12
+            image: debian:trixie
+            install: apt-get update -qq && apt-get install -y -qq build-essential kmod linux-headers-amd64
+            kdir: /usr/src/linux-headers-*-amd64
+          - name: fedora-latest
+            image: fedora:latest
+            install: dnf -y -q install gcc make kmod elfutils-libelf-devel kernel-devel
+            kdir: /usr/src/kernels/*
+          - name: arch-latest
+            image: archlinux:latest
+            install: pacman -Syu --noconfirm --needed base-devel kmod linux-headers
+            kdir: /usr/lib/modules/*/build
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install kernel headers
+        run: ${{ matrix.install }}
+      - name: Build (warnings are errors)
+        working-directory: driver
+        shell: sh
+        run: |
+          KDIR=$(ls -d ${{ matrix.kdir }} | head -1)
+          echo "kernel headers: $KDIR"
+          make KDIR="$KDIR" W=1 KCFLAGS=-Werror modules
+          modinfo fhs-cec.ko
+
+  dkms:
+    runs-on: ubuntu-latest
+    container: debian:bookworm
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dkms and headers
+        run: apt-get update -qq && apt-get install -y -qq build-essential dkms kmod linux-headers-amd64
+      - name: dkms build from the release tarball
+        working-directory: driver
+        run: |
+          VERSION=$(cat VERSION)
+          KVER=$(ls /lib/modules | head -1)
+          make dkms-tarball
+          tar -xzf fhs-cec-$VERSION.tar.gz -C /usr/src
+          dkms add fhs-cec/$VERSION
+          dkms build fhs-cec/$VERSION -k $KVER
+          dkms status
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fhs-cec-dkms
+          path: driver/fhs-cec-*.tar.gz

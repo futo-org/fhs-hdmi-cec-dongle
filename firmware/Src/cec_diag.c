@@ -1,4 +1,5 @@
 #include "cec_diag.h"
+#include "adapter.h"
 #include "board.h"
 #include "cec.h"
 #include "main.h"
@@ -242,7 +243,7 @@ static void diag_trace(uint32_t window_ms)
    sample it. Shows our bit timing and whether anyone asserts the ack slot. */
 static void diag_txtrace(uint8_t dest, const uint8_t *payload, size_t len)
 {
-    if (!cec_send(dest, payload, len)) {
+    if (!adapter_send_local(dest, payload, (uint8_t)len)) {
         printf("send rejected\n");
         return;
     }

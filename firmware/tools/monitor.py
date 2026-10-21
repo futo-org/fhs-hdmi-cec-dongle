@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
-"""Serial console for the ST-LINK VCP that survives unplugging the cable.
+"""Serial console for the dongle's USB debug port that survives unplugging it.
 
 pyserial-miniterm does not: its reader thread calls Serial.in_waiting, whose
 ioctl raises a bare OSError (ENXIO) once the node is yanked, and miniterm only
 catches serial.SerialException -- the thread dies, `alive` stays True, and the
 process sits in transmitter_thread.join() forever with the tty in raw mode,
 still holding the fd and its flock. Replug then finds the port taken, which
-looks like a wedged UART on the board and is not one.
+looks like a wedged board and is not one.
 
-Here a disconnect is normal: drop the fd, wait for the VCP to re-enumerate,
+Here a disconnect is normal: drop the fd, wait for the port to re-enumerate,
 reopen. Discovery is by USB VID:PID, since the node can change name on replug.
 
     monitor.py [port|hwgrep://<regexp>] [baud]      Ctrl-] quits
@@ -115,7 +115,7 @@ def session(ser):
 
 def main():
     spec = sys.argv[1] if len(sys.argv) > 1 else os.environ.get(
-        "SERIAL_PORT", "hwgrep://0483:374")
+        "SERIAL_PORT", "hwgrep://1209:0001")
     baud = int(sys.argv[2]) if len(sys.argv) > 2 else int(
         os.environ.get("BAUD", "115200"))
 

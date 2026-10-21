@@ -3,11 +3,9 @@
 
 #include <stdint.h>
 
-/* Banner + first prompt. */
-void shell_begin(void);
-
-/* Run one line, then re-prompt. */
-void shell_execute(const char *line);
+/* Debug console over USB CDC: banner when a terminal opens the port, then
+   one command per line. Main loop. */
+void shell_task(void);
 
 /* Argument parsers, shared with the command modules. Each advances the cursor
    past what it consumed and returns 0 if the next token is not that shape. */

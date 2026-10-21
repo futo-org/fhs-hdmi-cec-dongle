@@ -1,35 +1,40 @@
 /**
  ******************************************************************************
  * @file           : main.c
- * @brief          : Nucleo-F072RB: wiring only. Work lives in the modules.
+ * @brief          : FHS CEC dongle: wiring only. Work lives in the modules.
  ******************************************************************************
  */
 
 #include "main.h"
+#include "adapter.h"
+#include "bootloader.h"
 #include "cec.h"
-#include "console.h"
 #include "led.h"
-#include "shell.h"
 #include "system_clock.h"
-#include "uart.h"
+#include "usb.h"
+
+#if FHS_CEC_DEBUG_SHELL
+#include "shell.h"
+#endif
 
 int main(void)
 {
+    bootloader_check();
     HAL_Init();
     system_clock_config();
     led_init();
-    uart_init();
     cec_init();
-    shell_begin();
+    adapter_init();
+    usb_init();
 
     for (;;) {
-        const char *line = console_take_line();
-
-        if (line != NULL) {
-            shell_execute(line);
-        }
-        led_task();
+        usb_task();
         cec_task();
+        adapter_task();
+        led_task();
+#if FHS_CEC_DEBUG_SHELL
+        shell_task();
+#endif
     }
 }
 

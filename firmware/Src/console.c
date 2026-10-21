@@ -1,5 +1,5 @@
 #include "console.h"
-#include "uart.h"
+#include "usb.h"
 
 #include <stdio.h>
 
@@ -12,11 +12,11 @@ char *console_take_line(void)
 {
     int ch;
 
-    while ((ch = uart_getc()) >= 0) {
+    while ((ch = usb_console_getc()) >= 0) {
         char c = (char)ch;
 
         if (c == '\r' || c == '\n') {
-            __io_putchar('\n');
+            putchar('\n');
             while (fill > 0U && line[fill - 1U] == ' ') {
                 fill--;                 /* trailing space breaks arg match */
             }
@@ -31,7 +31,7 @@ char *console_take_line(void)
             }
         } else if (fill < (LINE_MAX - 1U) && c >= ' ' && c < 0x7F) {
             line[fill++] = c;
-            __io_putchar(c);            /* terminal is raw, we echo */
+            putchar(c);            /* terminal is raw, we echo */
         }
     }
     return NULL;

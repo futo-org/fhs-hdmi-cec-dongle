@@ -20,6 +20,10 @@ enable_language(C ASM)
 
 set(PROJECT_NAME fhs-hdmi-controller)
 
+# USB CDC debug console, bench diagnostics and fault injection. The presets
+# turn it on for Debug and off for Release.
+option(FHS_CEC_DEBUG_SHELL "Build the USB debug console" OFF)
+
 # Create an executable object type
 add_executable(${PROJECT_NAME})
 
@@ -45,16 +49,30 @@ target_sources(${PROJECT_NAME} PRIVATE
   ${HAL_DIR}/Src/stm32f0xx_hal_flash_ex.c
   ${HAL_DIR}/Src/stm32f0xx_hal_dma.c
   ${HAL_DIR}/Src/stm32f0xx_hal_cec.c
+  ${HAL_DIR}/Src/stm32f0xx_hal_i2c.c
+  ${HAL_DIR}/Src/stm32f0xx_hal_i2c_ex.c
   ${HAL_DIR}/Src/stm32f0xx_hal_uart.c
   ${HAL_DIR}/Src/stm32f0xx_hal_uart_ex.c
 )
+
+# TinyUSB device stack, vendored like the HAL: device core, CDC, STM32 FSDEV port.
+set(TUSB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/Drivers/tinyusb/src)
+set(TUSB_SRCS
+  ${TUSB_DIR}/tusb.c
+  ${TUSB_DIR}/common/tusb_fifo.c
+  ${TUSB_DIR}/device/usbd.c
+  ${TUSB_DIR}/class/cdc/cdc_device.c
+  ${TUSB_DIR}/portable/st/stm32_fsdev/dcd_stm32_fsdev.c
+  ${TUSB_DIR}/portable/st/stm32_fsdev/fsdev_common.c
+)
+target_sources(${PROJECT_NAME} PRIVATE ${TUSB_SRCS})
 
 # Vendor code, not ours to lint.
 set_source_files_properties(
   ${CMAKE_CURRENT_SOURCE_DIR}/Drivers/CMSIS/Device/ST/STM32F0xx/Source/Templates/system_stm32f0xx.c
   TARGET_DIRECTORY ${PROJECT_NAME} PROPERTIES COMPILE_OPTIONS "-w")
 file(GLOB HAL_SRCS ${HAL_DIR}/Src/*.c)
-set_source_files_properties(${HAL_SRCS}
+set_source_files_properties(${HAL_SRCS} ${TUSB_SRCS}
   TARGET_DIRECTORY ${PROJECT_NAME} PROPERTIES COMPILE_OPTIONS "-w")
 
 # Add include directories
@@ -62,6 +80,9 @@ target_include_directories(${PROJECT_NAME} PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/Drivers/CMSIS/Core/Include
   ${CMAKE_CURRENT_SOURCE_DIR}/Drivers/CMSIS/Device/ST/STM32F0xx/Include
   ${HAL_DIR}/Inc
+  ${TUSB_DIR}
+  # fhs-cec-proto.h, the wire protocol shared with the kernel driver
+  ${CMAKE_CURRENT_SOURCE_DIR}/../driver
 )
 
 # Compiler options
@@ -73,6 +94,7 @@ target_compile_options(${PROJECT_NAME} PRIVATE
 target_compile_definitions(${PROJECT_NAME} PRIVATE
   STM32F072xB
   USE_HAL_DRIVER
+  FHS_CEC_DEBUG_SHELL=$<BOOL:${FHS_CEC_DEBUG_SHELL}>
 )
 
 # Linker options

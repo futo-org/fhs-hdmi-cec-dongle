@@ -32,8 +32,13 @@
 MEMORY
 {
   RAM    (xrw)    : ORIGIN = 0x20000000,   LENGTH = 16K
-  FLASH    (rx)    : ORIGIN = 0x8000000,   LENGTH = 128K
+  FLASH    (rx)    : ORIGIN = 0x8000000,   LENGTH = 126K
+  SETTINGS (r)     : ORIGIN = 0x801F800,   LENGTH = 2K
 }
+
+/* Last flash page, kept out of the image for settings.c */
+_settings_page = ORIGIN(SETTINGS);
+_settings_page_size = LENGTH(SETTINGS);
 
 /* Entry Point */
 ENTRY(Reset_Handler)
@@ -201,6 +206,13 @@ SECTIONS
   } >RAM
   PROVIDE( __bss_size = __bss_end - __bss_start );
   PROVIDE( __non_tls_bss_start = ADDR(.bss) );
+
+  /* Left alone by startup, so it survives a software reset */
+  .noinit (NOLOAD) : ALIGN(4)
+  {
+    *(.noinit)
+    *(.noinit*)
+  } >RAM
 
   /* User_heap_stack section, used to check that there is enough "RAM" Ram  type memory left */
   ._user_heap_stack (NOLOAD) :
