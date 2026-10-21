@@ -1,0 +1,11 @@
+#ifndef VERSION_H
+#define VERSION_H
+
+#define FW_VERSION_MAJOR 0
+#define FW_VERSION_MINOR 1
+#define FW_VERSION_PATCH 0
+
+/* USB bcdDevice: 0xJJMN */
+#define FW_VERSION_BCD ((FW_VERSION_MAJOR << 8) | (FW_VERSION_MINOR << 4) | FW_VERSION_PATCH)
+
+#endif

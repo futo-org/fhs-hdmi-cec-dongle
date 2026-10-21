@@ -1,4 +1,4 @@
-# STM32 Nucleo-F072RB. Toolchain is mise-managed: no STM32Cube VS Code bundles.
+# FHS CEC dongle, STM32F072CBU6. Toolchain is mise-managed: no STM32Cube VS Code bundles.
 
 [tools]
 cmake = "4.4.3"
@@ -9,13 +9,17 @@ uv = "0.12.13"                 # runs the pyserial scripts below
 
 [env]
 PRESET = "{{ env.PRESET | default(value='Debug') }}"
-CHIP = "STM32F072RB"
+CHIP = "STM32F072CB"
 BAUD = "{{ env.BAUD | default(value='115200') }}"
 PYSERIAL = "uv run --quiet --with pyserial==3.5"
-# ST-LINK VCP, found by USB VID:PID instead of a fixed device node, so the same
-# task works on Linux (/dev/ttyACM*), macOS (/dev/cu.usbmodem*) and Windows (COM*).
-SERIAL_PORT = "{{ env.SERIAL_PORT | default(value='hwgrep://0483:374') }}"
+# USB CDC debug console (Debug preset), found by USB VID:PID instead of a fixed
+# device node, so the same task works on Linux (/dev/ttyACM*), macOS
+# (/dev/cu.usbmodem*) and Windows (COM*). VID:PID from driver/fhs-cec-proto.h.
+SERIAL_PORT = "{{ env.SERIAL_PORT | default(value='hwgrep://1209:0001') }}"
 ELF = "build/{{ env.PRESET | default(value='Debug') }}/fhs-hdmi-controller.elf"
+BIN = "build/{{ env.PRESET | default(value='Debug') }}/fhs-hdmi-controller.bin"
+DFU_DEVICE = "0483:df11"        # STM32 ROM bootloader
+FLASH_BASE = "0x08000000"
 
 [tasks.configure]
 description = "CMake configure (PRESET, default Debug)"
@@ -34,6 +38,20 @@ run = ["probe-rs download --chip $CHIP $ELF", "probe-rs reset --chip $CHIP"]
 [tasks.connect]
 description = "List probes + read DBGMCU_IDCODE, read-only"
 run = ["probe-rs list", "probe-rs read --chip $CHIP b32 0x40015800 1"]
+
+# dfu-util is not mise-managed: brew install dfu-util / apt install dfu-util
+[tasks.dfu]
+description = "Reboot a running Debug build into the ROM DFU bootloader"
+run = "$PYSERIAL tools/enter_dfu.py $SERIAL_PORT $BAUD"
+
+[tasks.flash]
+description = "Build, flash over USB DFU (no probe, no jumper on a running Debug build)"
+depends = ["build"]
+run = [
+    "arm-none-eabi-objcopy -O binary $ELF $BIN",
+    "$PYSERIAL tools/enter_dfu.py $SERIAL_PORT $BAUD || echo 'waiting for a DFU device'",
+    "dfu-util -w -d $DFU_DEVICE -a 0 -s $FLASH_BASE:leave -D $BIN",
+]
 
 [tasks.verify]
 description = "Check flash contents match the built ELF"
@@ -67,7 +85,7 @@ depends = ["build"]
 run = "arm-none-eabi-gdb $ELF -ex 'target extended-remote :1337'"
 
 [tasks.monitor]
-description = "Open the ST-LINK virtual COM port, survives replug (Ctrl-] to quit)"
+description = "Open the USB debug console, survives replug (Ctrl-] to quit)"
 run = "$PYSERIAL tools/monitor.py $SERIAL_PORT $BAUD"
 
 [tasks.ports]

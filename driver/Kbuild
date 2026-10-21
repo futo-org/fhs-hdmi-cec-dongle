@@ -1,0 +1,3 @@
+# SPDX-License-Identifier: GPL-2.0 OR MIT
+obj-m := fhs-cec.o
+ccflags-y += -DFHS_CEC_VERSION='"$(FHS_CEC_VERSION)"'

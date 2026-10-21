@@ -2,16 +2,16 @@
 
 #include "cec.h"
 #include "main.h"
-#include "uart.h"
+#include "usb.h"
 
 void SysTick_Handler(void)
 {
     HAL_IncTick();
 }
 
-void USART2_IRQHandler(void)
+void USB_IRQHandler(void)
 {
-    uart_irq_handler();
+    usb_irq_handler();
 }
 
 /* Shared with CAN, which this board does not use. */
