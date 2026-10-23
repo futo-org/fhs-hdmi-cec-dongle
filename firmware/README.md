@@ -70,7 +70,7 @@ to the MCU: `EDID=OFF mise run build`. The driver then falls back to the stored 
 | CEC_MCU | PB8, AF0 | through 100R to HDMI pin 13, open drain, no internal pull |
 | CEC_PULLUP | PB9 | top of the 27k bus pull-up. Driven high while running, so an unpowered dongle does not load the bus |
 | USB_DM / USB_DP | PA11 / PA12 | USB-C, internal D+ pull-up |
-| LED_DRV | PA5 | active high. On while the driver has the adapter enabled |
+| LED_DRV | PA1 | active high. On while the driver has the adapter enabled |
 | UART_TX / UART_RX | PA2 / PA3 | test points, unused by firmware |
 | DDC_SCL_MCU / DDC_SDA_MCU | PB6 / PB7 | EDID (`FHS_CEC_EDID`) |
 | BOOT0 | | `DFU` jumper |
