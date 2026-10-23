@@ -8,6 +8,7 @@ on:
 
 env:
   BOARD: hdmi-cec.kicad_pcb
+  SCHEMATIC: hdmi-cec.kicad_sch
   OUT: production
   GERBER_LAYERS: F.Cu,In1.Cu,In2.Cu,B.Cu,F.Paste,B.Paste,F.Silkscreen,B.Silkscreen,F.Mask,B.Mask,Edge.Cuts
 
@@ -28,6 +29,28 @@ jobs:
         run: kicad-cli pcb export drill --excellon-separate-th -o "$OUT/gerbers/" "$BOARD"
       - name: STEP
         run: kicad-cli pcb export step --subst-models -o "$OUT/hdmi-cec.step" "$BOARD"
+      - name: BOM
+        run: |
+          mkdir -p "$OUT/assembly"
+          kicad-cli sch export bom --exclude-dnp --ref-range-delimiter '' \
+            --fields 'Value,Reference,${FOOTPRINT_NAME},LCSC' \
+            --labels 'Comment,Designator,Footprint,LCSC Part #' \
+            --group-by 'Value,${FOOTPRINT_NAME},LCSC' \
+            -o "$OUT/assembly/hdmi-cec-bom.csv" "$SCHEMATIC"
+      # Placements are limited to BOM refs so test points, jumpers and the logo stay out of the CPL
+      - name: CPL
+        run: |
+          kicad-cli sch export bom --exclude-dnp --fields Reference --group-by '' -o "$RUNNER_TEMP/refs.csv" "$SCHEMATIC"
+          kicad-cli pcb export pos --exclude-dnp --format csv --units mm --side both -o "$RUNNER_TEMP/pos.csv" "$BOARD"
+          awk -F, 'NR == FNR { gsub(/"/, ""); refs[$1]; next }
+            FNR == 1 { print "Designator,Mid X,Mid Y,Layer,Rotation"; next }
+            { gsub(/"/, "") }
+            $1 in refs { printf "%s,%.4fmm,%.4fmm,%s,%d\n", $1, $4, $5, ($7 == "top" ? "Top" : "Bottom"), $6 }' \
+            "$RUNNER_TEMP/refs.csv" "$RUNNER_TEMP/pos.csv" > "$OUT/assembly/hdmi-cec-cpl.csv"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hdmi-cec-assembly
+          path: hardware/pcb/production/assembly/
       - uses: actions/upload-artifact@v4
         with:
           name: hdmi-cec-gerbers
