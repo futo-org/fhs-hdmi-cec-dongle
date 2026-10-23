@@ -6,7 +6,7 @@
 
 /* Status LED, active high */
 #define BOARD_LED_PORT             GPIOA
-#define BOARD_LED_PIN              GPIO_PIN_1
+#define BOARD_LED_PIN              GPIO_PIN_5
 #define BOARD_LED_CLK_ENABLE()     __HAL_RCC_GPIOA_CLK_ENABLE()
 
 /* USB FS on PA11/PA12, USB-C. No crystal: the USB clock is HSI48 trimmed by CRS
