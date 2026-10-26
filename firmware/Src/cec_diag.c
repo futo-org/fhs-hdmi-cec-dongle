@@ -37,7 +37,7 @@ static void pin_mode(uint32_t mode)
 
     gpio.Pin = BOARD_CEC_PIN;
     gpio.Mode = mode;
-    gpio.Pull = GPIO_NOPULL;
+    gpio.Pull = BOARD_CEC_PULL;
     gpio.Speed = GPIO_SPEED_FREQ_HIGH;
     HAL_GPIO_Init(BOARD_CEC_PORT, &gpio);
 }

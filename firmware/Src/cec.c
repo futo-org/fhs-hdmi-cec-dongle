@@ -648,13 +648,6 @@ static void cec_msp_init(void)
     BOARD_CEC_CLK_ENABLE();
     BOARD_CEC_PORT_CLK_ENABLE();
 
-    HAL_GPIO_WritePin(BOARD_CEC_PULLUP_PORT, BOARD_CEC_PULLUP_PIN, GPIO_PIN_SET);
-    gpio.Pin = BOARD_CEC_PULLUP_PIN;
-    gpio.Mode = GPIO_MODE_OUTPUT_PP;
-    gpio.Pull = GPIO_NOPULL;
-    gpio.Speed = GPIO_SPEED_FREQ_LOW;
-    HAL_GPIO_Init(BOARD_CEC_PULLUP_PORT, &gpio);
-
     cec_pin_to_af();
 
     HAL_NVIC_SetPriority(BOARD_CEC_IRQn, BOARD_CEC_IRQ_PRIORITY, 0);
@@ -675,15 +668,13 @@ static void cec_rearm(void)
     BOARD_CEC->ISR = CEC_FLAG_ALL;
 }
 
-/* Open drain, no pull: the bus pull-up is external. An internal pull-up would
-   fight every other device pulling the line down. */
 static void cec_pin_to_af(void)
 {
     GPIO_InitTypeDef gpio = {0};
 
     gpio.Pin = BOARD_CEC_PIN;
     gpio.Mode = GPIO_MODE_AF_OD;
-    gpio.Pull = GPIO_NOPULL;
+    gpio.Pull = BOARD_CEC_PULL;
     gpio.Speed = GPIO_SPEED_FREQ_HIGH;
     gpio.Alternate = BOARD_CEC_AF;
     HAL_GPIO_Init(BOARD_CEC_PORT, &gpio);
