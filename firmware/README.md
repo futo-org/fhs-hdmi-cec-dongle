@@ -69,10 +69,10 @@ line diagnostics and fault injection.
 | USB_DM / USB_DP | PA11 / PA12 | USB-C, internal D+ pull-up |
 | LED_DRV | PA5 | active high. On while the driver has the adapter enabled |
 | UART_TX / UART_RX | PA2 / PA3 | test points, unused by firmware |
-| DDC_SCL_MCU / DDC_SDA_MCU | PB6 / PB7 | EDID, unused so far |
 | BOOT0 | | `DFU` jumper |
 
-HPD and HDMI 5V are not wired to the MCU on this revision.
+HPD, HDMI 5V and DDC are not wired to the MCU on this revision (v0.2-NDDC). DDC passes straight
+through between the two HDMI connectors.
 
 No crystal. SYSCLK and the USB clock are HSI48; CRS trims it against the host's 1 kHz SOF. HSI
 (8 MHz) stays on for the CEC kernel clock, HSI/244 = 32.787 kHz.
@@ -94,7 +94,7 @@ No crystal. SYSCLK and the USB clock are HSI48; CRS trims it against the host's 
 - **Receive filter in software.** Full listening mode always (reduced mode wedges, see below).
   Forwarded: broadcast, frames to an acked address, everything with monitor-all.
 - **Physical address** is stored in flash (`SET_PHYS_ADDR`), default `1.0.0.0`. The driver reads
-  it at probe. Not yet read from EDID.
+  it at probe. The board has no DDC tap, so it cannot be read from EDID.
 
 ## Debug console
 
