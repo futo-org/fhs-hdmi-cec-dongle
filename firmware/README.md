@@ -64,8 +64,7 @@ line diagnostics and fault injection.
 
 | Net | MCU | Notes |
 |---|---|---|
-| CEC_MCU | PB8, AF0 | through 100R to HDMI pin 13, open drain, no internal pull |
-| CEC_PULLUP | PB9 | top of the 27k bus pull-up. Driven high while running, so an unpowered dongle does not load the bus |
+| CEC_MCU | PB8, AF0 | through 100R and Q1 to HDMI pin 13, open drain, internal pull-up. Q1 cuts the pin off the bus when unpowered |
 | USB_DM / USB_DP | PA11 / PA12 | USB-C, internal D+ pull-up |
 | LED_DRV | PA5 | active high. On while the driver has the adapter enabled |
 | UART_TX / UART_RX | PA2 / PA3 | test points, unused by firmware |
