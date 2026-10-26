@@ -13,6 +13,22 @@ env:
   GERBER_LAYERS: F.Cu,In1.Cu,In2.Cu,B.Cu,F.Paste,B.Paste,F.Silkscreen,B.Silkscreen,F.Mask,B.Mask,Edge.Cuts
 
 jobs:
+  drc:
+    runs-on: ubuntu-latest
+    container:
+      image: kicad/kicad:10.0-full
+      options: --user root
+    defaults:
+      run:
+        working-directory: hardware/pcb
+    steps:
+      - uses: actions/checkout@v4
+      - name: DRC
+        run: kicad-cli pcb drc --severity-error --severity-warning --exit-code-violations -o "$RUNNER_TEMP/drc.rpt" "$BOARD"
+      - name: Report
+        if: failure()
+        run: cat "$RUNNER_TEMP/drc.rpt"
+
   production:
     runs-on: ubuntu-latest
     container:

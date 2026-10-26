@@ -1,0 +1,7 @@
+(version 1)
+
+# J1 is a card-edge HDMI plug, so its pads run to the board edge by design
+(rule "J1 edge pads"
+	(constraint edge_clearance)
+	(condition "A.memberOfFootprint('J1') || B.memberOfFootprint('J1')")
+	(severity ignore))
