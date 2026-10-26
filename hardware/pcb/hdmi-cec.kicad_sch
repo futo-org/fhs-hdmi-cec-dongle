@@ -6156,134 +6156,6 @@
 	)
 	(wire
 		(pts
-			(xy 168.91 144.78) (xy 166.37 144.78)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "945d2c83-599d-48d0-a072-d97898eba96a")
-	)
-	(wire
-		(pts
-			(xy 176.53 144.78) (xy 179.07 144.78)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "70edd1a5-5fee-4c7c-ac83-e6c6f6ed1968")
-	)
-	(global_label "DDC_SCL"
-		(shape bidirectional)
-		(at 166.37 144.78 180)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify right)
-		)
-		(uuid "3e82c536-b95a-4811-a4ea-8c053fb1ddb4")
-		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 166.37 144.78 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-	)
-	(global_label "DDC_SCL_MCU"
-		(shape bidirectional)
-		(at 179.07 144.78 0)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left)
-		)
-		(uuid "5e3e1f44-5feb-496d-abab-53868b54d318")
-		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 179.07 144.78 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-	)
-	(wire
-		(pts
-			(xy 168.91 154.94) (xy 166.37 154.94)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "777a58a9-d09b-4b31-a9ec-440da89fd63e")
-	)
-	(wire
-		(pts
-			(xy 176.53 154.94) (xy 179.07 154.94)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "fa675bf0-5d0f-49c2-ab50-7a487e10ee71")
-	)
-	(global_label "DDC_SDA"
-		(shape bidirectional)
-		(at 166.37 154.94 180)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify right)
-		)
-		(uuid "c7c2e2ee-24b3-435f-a505-68fb07a188f0")
-		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 166.37 154.94 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-	)
-	(global_label "DDC_SDA_MCU"
-		(shape bidirectional)
-		(at 179.07 154.94 0)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left)
-		)
-		(uuid "ac76f58e-4b20-4e65-adc5-32d3dea7030f")
-		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 179.07 154.94 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-	)
-	(wire
-		(pts
 			(xy 33.02 139.7) (xy 29.21 139.7)
 		)
 		(stroke
@@ -7400,24 +7272,12 @@
 		)
 		(uuid "87f18033-e4f4-443a-a4d6-e211d8e14dfc")
 	)
-	(wire
-		(pts
-			(xy 280.67 111.76) (xy 276.86 111.76)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
+	(no_connect
+		(at 280.67 111.76)
 		(uuid "c84b9dcc-0a00-4f53-aa91-074191a73e52")
 	)
-	(wire
-		(pts
-			(xy 280.67 114.3) (xy 276.86 114.3)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
+	(no_connect
+		(at 280.67 114.3)
 		(uuid "b1a0d4d9-0e41-4e46-a2e0-3e78f0998d8e")
 	)
 	(wire
@@ -7474,50 +7334,6 @@
 		(uuid "be0a088a-56fd-421c-afd0-47892efdf5e0")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
 			(at 276.86 73.66 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-	)
-	(global_label "DDC_SCL_MCU"
-		(shape bidirectional)
-		(at 276.86 111.76 180)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify right)
-		)
-		(uuid "59f63ffc-a52a-434b-af39-08082371067e")
-		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 276.86 111.76 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-	)
-	(global_label "DDC_SDA_MCU"
-		(shape bidirectional)
-		(at 276.86 114.3 180)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify right)
-		)
-		(uuid "7d764b63-7089-4abe-a6b2-fba04c3be326")
-		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 276.86 114.3 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -8428,7 +8244,7 @@
 		)
 		(uuid "b8d08c20-891d-47ca-afe0-b53b99cbd86b")
 	)
-	(text "CEC / DDC Series Resistors"
+	(text "CEC Series Resistors"
 		(exclude_from_sim no)
 		(at 152.4 116.84 0)
 		(effects
@@ -11509,96 +11325,6 @@
 		)
 	)
 	(symbol
-		(lib_id "Device:R")
-		(at 172.72 154.94 90)
-		(unit 1)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(in_pos_files yes)
-		(dnp no)
-		(uuid "8a3fabc6-6c63-5b62-a751-99fd5119deab")
-		(property "Reference" "R8"
-			(at 172.72 152.4 90)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Value" "100R"
-			(at 172.72 157.48 90)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Footprint" "hdmi-cec:R0402"
-			(at 172.72 154.94 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Datasheet" ""
-			(at 172.72 154.94 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Description" ""
-			(at 172.72 154.94 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "LCSC" "C25076"
-			(at 172.72 154.94 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(pin "1"
-			(uuid "9e4eb909-594a-50ca-81bd-d78e095d5ca0")
-		)
-		(pin "2"
-			(uuid "f62fce5e-d797-57f6-b9ad-3e93864295f6")
-		)
-		(instances
-			(project "hdmi-cec"
-				(path "/d1f83add-0ff9-52f4-acd6-a6f8ec38997c"
-					(reference "R8")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
 		(lib_id "power:GND")
 		(at 121.92 162.56 0)
 		(unit 1)
@@ -11762,96 +11488,6 @@
 			(project "hdmi-cec"
 				(path "/d1f83add-0ff9-52f4-acd6-a6f8ec38997c"
 					(reference "R4")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
-		(lib_id "Device:R")
-		(at 172.72 144.78 90)
-		(unit 1)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(in_pos_files yes)
-		(dnp no)
-		(uuid "9159608a-d52f-5d7d-85db-df4a1091d63a")
-		(property "Reference" "R7"
-			(at 172.72 142.24 90)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Value" "100R"
-			(at 172.72 147.32 90)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Footprint" "hdmi-cec:R0402"
-			(at 172.72 144.78 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Datasheet" ""
-			(at 172.72 144.78 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Description" ""
-			(at 172.72 144.78 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "LCSC" "C25076"
-			(at 172.72 144.78 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(pin "1"
-			(uuid "62950461-ca85-51a9-9207-5215a9f21d81")
-		)
-		(pin "2"
-			(uuid "39cee6fa-d950-5a9b-af99-8088d2b13abc")
-		)
-		(instances
-			(project "hdmi-cec"
-				(path "/d1f83add-0ff9-52f4-acd6-a6f8ec38997c"
-					(reference "R7")
 					(unit 1)
 				)
 			)
