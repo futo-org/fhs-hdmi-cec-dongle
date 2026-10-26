@@ -10138,7 +10138,7 @@
 			(justify left bottom)
 		)
 	)
-	(gr_text "v0.2\n@bwees"
+	(gr_text "v0.2-DDC\n@bwees"
 		(at 96.8 115.125 0)
 		(layer "F.SilkS")
 		(uuid "c6b7e277-4b99-4ec8-9d9b-e48328dcd745")
