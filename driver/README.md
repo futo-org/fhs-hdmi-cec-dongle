@@ -39,7 +39,7 @@ cec-ctl -d /dev/cec-fhs --to 0 --give-device-power-status
 
 ## Physical address
 
-The dongle stores its HDMI physical address in flash (factory default `1.0.0.0`). The driver sets it at plug-in, so libcec works with no setup.
+The driver sets the HDMI physical address at plug-in, so libcec works with no setup. It reads it from the display's EDID on boards that support it, else uses the one stored in the dongle's flash (factory default `1.0.0.0`). EDID is read once, at plug-in.
 
 Change the stored value (survives replug and reboot):
 
@@ -50,7 +50,7 @@ echo 2.0.0.0 | sudo tee /sys/bus/usb/drivers/fhs-cec/*/stored_phys_addr
 Overrides, highest priority first:
 
 - `cec-ctl -d /dev/cec-fhs --phys-addr 2.0.0.0`: until replug
-- `phys_addr=0x2000` module parameter: ignores the stored value
+- `phys_addr=0x2000` module parameter: ignores EDID and the stored value
 
 ## Secure Boot
 

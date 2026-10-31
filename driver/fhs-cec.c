@@ -20,13 +20,18 @@
 #define FHS_CEC_CTRL_TIMEOUT_MS 1000
 #define FHS_CEC_EVENT_FIFO_SIZE 32
 
+static_assert(FHS_CEC_EDID_BUDGET_MS < FHS_CEC_CTRL_TIMEOUT_MS,
+	      "an EDID read must finish inside the control request timeout");
+
+#define EDID_EXT_COUNT_OFFSET 126
+
 #define FHS_CEC_REQ_OUT (USB_DIR_OUT | USB_TYPE_VENDOR | USB_RECIP_INTERFACE)
 #define FHS_CEC_REQ_IN (USB_DIR_IN | USB_TYPE_VENDOR | USB_RECIP_INTERFACE)
 
 static int phys_addr = -1;
 module_param(phys_addr, int, 0444);
 MODULE_PARM_DESC(phys_addr,
-		 "Physical address to use instead of the one stored in the dongle, e.g. 0x1000 for 1.0.0.0");
+		 "Physical address to use instead of the one from EDID or stored in the dongle, e.g. 0x1000 for 1.0.0.0");
 
 struct fhs_cec_event {
 	ktime_t ts;
@@ -81,7 +86,8 @@ static int fhs_cec_out(struct fhs_cec *fc, u8 request, u16 value,
 	return ret;
 }
 
-static int fhs_cec_in(struct fhs_cec *fc, u8 request, void *data, u16 size)
+static int fhs_cec_in(struct fhs_cec *fc, u8 request, u16 value, void *data,
+		      u16 size)
 {
 	int ret;
 
@@ -90,7 +96,7 @@ static int fhs_cec_in(struct fhs_cec *fc, u8 request, void *data, u16 size)
 		ret = -ENODEV;
 	else
 		ret = usb_control_msg_recv(fc->udev, 0, request,
-					   FHS_CEC_REQ_IN, 0, fc->ifnum,
+					   FHS_CEC_REQ_IN, value, fc->ifnum,
 					   data, size, FHS_CEC_CTRL_TIMEOUT_MS,
 					   GFP_KERNEL);
 	mutex_unlock(&fc->io_lock);
@@ -99,7 +105,51 @@ static int fhs_cec_in(struct fhs_cec *fc, u8 request, void *data, u16 size)
 
 static int fhs_cec_get_info(struct fhs_cec *fc, struct fhs_cec_info *info)
 {
-	return fhs_cec_in(fc, FHS_CEC_REQ_GET_INFO, info, sizeof(*info));
+	return fhs_cec_in(fc, FHS_CEC_REQ_GET_INFO, 0, info, sizeof(*info));
+}
+
+static bool fhs_cec_edid_checksum_ok(const u8 *block)
+{
+	u8 sum = 0;
+	int i;
+
+	for (i = 0; i < FHS_CEC_EDID_BLOCK_SIZE; i++)
+		sum += block[i];
+	return sum == 0;
+}
+
+static int fhs_cec_get_edid_block(struct fhs_cec *fc, u8 block, u8 *buf)
+{
+	int ret;
+
+	ret = fhs_cec_in(fc, FHS_CEC_REQ_GET_EDID, block, buf,
+			 FHS_CEC_EDID_BLOCK_SIZE);
+	if (ret)
+		return ret;
+	return fhs_cec_edid_checksum_ok(buf) ? 0 : -EBADMSG;
+}
+
+/* The display's physical address, or CEC_PHYS_ADDR_INVALID without one. */
+static u16 fhs_cec_edid_phys_addr(struct fhs_cec *fc,
+				  const struct fhs_cec_info *info)
+{
+	u8 edid[FHS_CEC_EDID_BLOCK_SIZE * FHS_CEC_EDID_MAX_BLOCKS];
+	int ret;
+
+	if (!(le32_to_cpu((__force __le32)info->caps) & FHS_CEC_CAP_EDID))
+		return CEC_PHYS_ADDR_INVALID;
+
+	ret = fhs_cec_get_edid_block(fc, 0, edid);
+	if (!ret && edid[EDID_EXT_COUNT_OFFSET] == 0)
+		ret = -ENODATA;
+	if (!ret)
+		ret = fhs_cec_get_edid_block(fc, 1,
+					     edid + FHS_CEC_EDID_BLOCK_SIZE);
+	if (ret) {
+		dev_info(&fc->intf->dev, "no EDID from the display: %d\n", ret);
+		return CEC_PHYS_ADDR_INVALID;
+	}
+	return cec_get_edid_phys_addr(edid, sizeof(edid), NULL);
 }
 
 static u16 fhs_cec_info_phys_addr(const struct fhs_cec_info *info)
@@ -183,7 +233,7 @@ static void fhs_cec_adap_status(struct cec_adapter *adap,
 	struct fhs_cec_info info;
 
 	if (fhs_cec_get_info(fc, &info) ||
-	    fhs_cec_in(fc, FHS_CEC_REQ_GET_STATUS, &st, sizeof(st))) {
+	    fhs_cec_in(fc, FHS_CEC_REQ_GET_STATUS, 0, &st, sizeof(st))) {
 		seq_puts(file, "device not responding\n");
 		return;
 	}
@@ -423,19 +473,25 @@ static struct attribute *fhs_cec_attrs[] = {
 };
 ATTRIBUTE_GROUPS(fhs_cec);
 
+/* The module parameter, else the display's EDID, else the one stored in the dongle. */
 static u16 fhs_cec_initial_phys_addr(struct fhs_cec *fc,
 				     const struct fhs_cec_info *info)
 {
-	if (phys_addr < 0)
-		return fhs_cec_info_phys_addr(info);
-	if (phys_addr > CEC_PHYS_ADDR_INVALID ||
-	    !fhs_cec_phys_addr_valid(phys_addr)) {
+	u16 pa;
+
+	if (phys_addr >= 0) {
+		if (phys_addr <= CEC_PHYS_ADDR_INVALID &&
+		    fhs_cec_phys_addr_valid(phys_addr))
+			return phys_addr;
 		dev_warn(&fc->intf->dev,
-			 "phys_addr %#x is not a valid address, using the stored one\n",
+			 "phys_addr %#x is not a valid address, ignoring it\n",
 			 phys_addr);
-		return fhs_cec_info_phys_addr(info);
 	}
-	return phys_addr;
+
+	pa = fhs_cec_edid_phys_addr(fc, info);
+	if (pa != CEC_PHYS_ADDR_INVALID)
+		return pa;
+	return fhs_cec_info_phys_addr(info);
 }
 
 static struct fhs_cec *fhs_cec_create(struct usb_interface *intf,
@@ -533,6 +589,9 @@ static int fhs_cec_probe(struct usb_interface *intf,
 		return ret;
 	}
 
+	/* The dongle's EDID read stalls its CEC traffic, so do it before anyone can use the adapter. */
+	pa = fhs_cec_initial_phys_addr(fc, &info);
+
 	usb_set_intfdata(intf, fc);
 	ret = fhs_cec_start(fc);
 	if (ret) {
@@ -542,7 +601,6 @@ static int fhs_cec_probe(struct usb_interface *intf,
 		return ret;
 	}
 
-	pa = fhs_cec_initial_phys_addr(fc, &info);
 	if (pa != FHS_CEC_PHYS_ADDR_INVALID)
 		cec_s_phys_addr(fc->adap, pa, false);
 
