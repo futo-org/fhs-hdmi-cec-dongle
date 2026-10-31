@@ -9,11 +9,20 @@
 
 #include "fhs-cec-proto.h"
 
+#if FHS_CEC_EDID
+#include "ddc.h"
+#endif
+
 #include <stddef.h>
 #include <string.h>
 
 _Static_assert(CEC_TX_TIMEOUT_MS <= FHS_CEC_TX_BUDGET_MS,
                "a transmit must resolve inside the budget the driver relies on");
+#if FHS_CEC_EDID
+_Static_assert(DDC_READ_TIMEOUT_MS < FHS_CEC_EDID_BUDGET_MS,
+               "an EDID read must resolve inside the budget the driver relies on");
+_Static_assert(EDID_BLOCK_SIZE == FHS_CEC_EDID_BLOCK_SIZE, "EDID block sizes disagree");
+#endif
 _Static_assert(CEC_FRAME_MAX == FHS_CEC_FRAME_MAX, "frame sizes disagree");
 _Static_assert(sizeof(struct fhs_cec_ev_rx) < FHS_CEC_EVENT_PACKET_SIZE,
                "an event must end its transfer with a short packet");
@@ -53,6 +62,9 @@ static uint8_t tx_len;
 static struct fhs_cec_info info;
 static struct fhs_cec_status status;
 static uint8_t host_frame[CEC_FRAME_MAX];
+#if FHS_CEC_EDID
+static uint8_t edid_block[FHS_CEC_EDID_BLOCK_SIZE];
+#endif
 
 #if FHS_CEC_DEBUG_SHELL
 #define LATE_TX_DONE_MS 2500U   /* past the kernel core's 2100 ms timeout */
@@ -242,6 +254,9 @@ static void fill_info(void)
     info.reserved = 0;
     info.phys_addr = settings_phys_addr();
     info.caps = FHS_CEC_CAP_MONITOR_ALL;
+#if FHS_CEC_EDID
+    info.caps |= FHS_CEC_CAP_EDID;
+#endif
 }
 
 static void fill_status(void)
@@ -303,6 +318,16 @@ static bool setup(uint8_t rhport, tusb_control_request_t const *req)
         TU_VERIFY(direction_is(req, TUSB_DIR_OUT) && enabled);
         TU_VERIFY(req->wLength >= 1U && req->wLength <= CEC_FRAME_MAX);
         return tud_control_xfer(rhport, req, host_frame, req->wLength);
+
+#if FHS_CEC_EDID
+    /* Blocks the main loop for the read. The driver asks at probe, before
+       the adapter is enabled. */
+    case FHS_CEC_REQ_GET_EDID:
+        TU_VERIFY(direction_is(req, TUSB_DIR_IN));
+        TU_VERIFY(req->wValue < FHS_CEC_EDID_MAX_BLOCKS);
+        TU_VERIFY(ddc_read_edid_block((uint8_t)req->wValue, edid_block) == DDC_OK);
+        return tud_control_xfer(rhport, req, edid_block, sizeof(edid_block));
+#endif
 
     default:
         return false;

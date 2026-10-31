@@ -5,6 +5,9 @@
 
 #define EDID_BLOCK_SIZE 128U
 
+/* Upper bound on one block read, stuck bus included. A good read takes ~240 ms. */
+#define DDC_READ_TIMEOUT_MS 500U
+
 typedef enum {
     DDC_OK,
     DDC_NO_ACK,         /* nothing answered at the EDID address */

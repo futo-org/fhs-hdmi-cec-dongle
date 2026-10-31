@@ -28,7 +28,7 @@
 
 /* The driver refuses a device with a different major. */
 #define FHS_CEC_PROTO_MAJOR 1
-#define FHS_CEC_PROTO_MINOR 0
+#define FHS_CEC_PROTO_MINOR 1
 
 /* Header + opcode + up to 14 operands. */
 #define FHS_CEC_FRAME_MAX 16
@@ -42,6 +42,14 @@
 #define FHS_CEC_TX_BUDGET_MS 1000
 
 #define FHS_CEC_PHYS_ADDR_INVALID 0xFFFF
+
+#define FHS_CEC_EDID_BLOCK_SIZE 128
+/* The base block and one extension, the most one DDC segment holds. */
+#define FHS_CEC_EDID_MAX_BLOCKS 2
+
+/* The firmware answers GET_EDID within this, inside the driver's control
+   request timeout. */
+#define FHS_CEC_EDID_BUDGET_MS 600
 
 enum fhs_cec_request {
 	/* IN, struct fhs_cec_info */
@@ -58,10 +66,15 @@ enum fhs_cec_request {
 	FHS_CEC_REQ_SET_PHYS_ADDR = 0x06,
 	/* IN, struct fhs_cec_status */
 	FHS_CEC_REQ_GET_STATUS = 0x07,
+	/* IN, wValue: block number; the 128-byte EDID block read from the
+	   display over DDC. Stalls if the display does not answer. Only with
+	   FHS_CEC_CAP_EDID. */
+	FHS_CEC_REQ_GET_EDID = 0x08,
 };
 
 enum fhs_cec_cap {
 	FHS_CEC_CAP_MONITOR_ALL = 1u << 0,
+	FHS_CEC_CAP_EDID = 1u << 1,
 };
 
 enum fhs_cec_event_type {

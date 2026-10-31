@@ -24,6 +24,9 @@ set(PROJECT_NAME fhs-hdmi-controller)
 # turn it on for Debug and off for Release.
 option(FHS_CEC_DEBUG_SHELL "Build the USB debug console" OFF)
 
+# Read the display's EDID over DDC. Off for boards without DDC wired to the MCU.
+option(FHS_CEC_EDID "Read the display's EDID over DDC" ON)
+
 # Create an executable object type
 add_executable(${PROJECT_NAME})
 
@@ -95,6 +98,7 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
   STM32F072xB
   USE_HAL_DRIVER
   FHS_CEC_DEBUG_SHELL=$<BOOL:${FHS_CEC_DEBUG_SHELL}>
+  FHS_CEC_EDID=$<BOOL:${FHS_CEC_EDID}>
 )
 
 # Linker options

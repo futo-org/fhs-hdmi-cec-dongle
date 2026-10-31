@@ -6,10 +6,13 @@
 #include "cec_diag.h"
 #include "cec_log.h"
 #include "console.h"
-#include "ddc.h"
 #include "led.h"
 #include "settings.h"
 #include "version.h"
+
+#if FHS_CEC_EDID
+#include "ddc.h"
+#endif
 
 #include "tusb.h"
 
@@ -32,7 +35,9 @@ static void cmd_led(const char *args);
 static void cmd_cec(const char *args);
 static void cmd_fault(const char *args);
 static void cmd_diag(const char *args);
+#if FHS_CEC_EDID
 static void cmd_edid(const char *args);
+#endif
 static void cmd_status(const char *args);
 static void cmd_reset(const char *args);
 static void cmd_dfu(const char *args);
@@ -43,7 +48,9 @@ static const command_t commands[] = {
     { "cec",    "send|listen|...", "hdmi-cec bus",            cmd_cec },
     { "fault",  "nack|late|...",  "break the next host exchange", cmd_fault },
     { "diag",   "line|noise|...", "cec line instrumentation", cmd_diag },
+#if FHS_CEC_EDID
     { "edid",   "",               "read the display's edid",  cmd_edid },
+#endif
     { "status", "",               "clock, usb, adapter, cec", cmd_status },
     { "reset",  "",               "software reset",           cmd_reset },
     { "dfu",    "",               "reboot into the usb dfu bootloader", cmd_dfu },
@@ -152,6 +159,7 @@ static void cmd_status(const char *args)
     printf("led      %s\n", led_mode_name(led_get_mode()));
 }
 
+#if FHS_CEC_EDID
 #define HEX_DUMP_COLUMNS 16U
 
 static void hex_dump(const uint8_t *data, size_t len)
@@ -202,6 +210,7 @@ static void cmd_edid(const char *args)
         printf("no hdmi vendor block, so no physical address\n");
     }
 }
+#endif
 
 static void cmd_reset(const char *args)
 {

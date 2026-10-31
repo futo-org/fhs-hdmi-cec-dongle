@@ -3,7 +3,6 @@
 
 #define EDID_I2C_ADDR       (0x50U << 1)
 #define EDID_BLOCKS_PER_SEGMENT 2U
-#define DDC_TIMEOUT_MS      1000U
 
 /* ~5 kHz from the 8 MHz HSI kernel clock: PRESC 15 (2 us ticks), SCLL = SCLH =
    49 (100 us). Slow enough for the internal ~40k pull-ups to charge a cable. */
@@ -84,7 +83,7 @@ ddc_result_t ddc_read_edid_block(uint8_t block, uint8_t *out)
     }
 
     status = HAL_I2C_Mem_Read(&i2c, EDID_I2C_ADDR, (uint16_t)(block * EDID_BLOCK_SIZE),
-                              I2C_MEMADD_SIZE_8BIT, out, EDID_BLOCK_SIZE, DDC_TIMEOUT_MS);
+                              I2C_MEMADD_SIZE_8BIT, out, EDID_BLOCK_SIZE, DDC_READ_TIMEOUT_MS);
     error = HAL_I2C_GetError(&i2c);
 
     HAL_I2C_DeInit(&i2c);

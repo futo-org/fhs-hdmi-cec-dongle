@@ -9,6 +9,8 @@ uv = "0.12.13"                 # runs the pyserial scripts below
 
 [env]
 PRESET = "{{ env.PRESET | default(value='Debug') }}"
+# OFF for boards without DDC wired to the MCU.
+EDID = "{{ env.EDID | default(value='ON') }}"
 CHIP = "STM32F072CB"
 BAUD = "{{ env.BAUD | default(value='115200') }}"
 PYSERIAL = "uv run --quiet --with pyserial==3.5"
@@ -22,8 +24,8 @@ DFU_DEVICE = "0483:df11"        # STM32 ROM bootloader
 FLASH_BASE = "0x08000000"
 
 [tasks.configure]
-description = "CMake configure (PRESET, default Debug)"
-run = "cmake --preset $PRESET"
+description = "CMake configure (PRESET, default Debug; EDID, default ON)"
+run = "cmake --preset $PRESET -DFHS_CEC_EDID=$EDID"
 
 [tasks.build]
 description = "Build firmware"

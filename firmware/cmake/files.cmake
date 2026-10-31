@@ -6,7 +6,6 @@ target_sources(${PROJECT_NAME} PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/Src/adapter.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/Src/bootloader.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/Src/cec.c"
-    "${CMAKE_CURRENT_SOURCE_DIR}/Src/ddc.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/Src/led.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/Src/settings.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/Src/stm32f0xx_it.c"
@@ -14,6 +13,12 @@ target_sources(${PROJECT_NAME} PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/Src/usb.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/Src/startup_stm32f0x2xx.S"
 )
+
+if(FHS_CEC_EDID)
+    target_sources(${PROJECT_NAME} PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/Src/ddc.c"
+    )
+endif()
 
 if(FHS_CEC_DEBUG_SHELL)
     target_sources(${PROJECT_NAME} PRIVATE

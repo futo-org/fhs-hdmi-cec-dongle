@@ -40,6 +40,9 @@ On Linux the ST-LINK needs the udev rule once:
 The driver binds the CEC interface in both. Release compiles out the console, frame decoder,
 line diagnostics and fault injection.
 
+`FHS_CEC_EDID` (default ON) builds the DDC EDID reader. Turn it off for boards without DDC wired
+to the MCU: `EDID=OFF mise run build`. The driver then falls back to the stored address.
+
 ## Layout
 
 | Path | What |
@@ -69,7 +72,7 @@ line diagnostics and fault injection.
 | USB_DM / USB_DP | PA11 / PA12 | USB-C, internal D+ pull-up |
 | LED_DRV | PA5 | active high. On while the driver has the adapter enabled |
 | UART_TX / UART_RX | PA2 / PA3 | test points, unused by firmware |
-| DDC_SCL_MCU / DDC_SDA_MCU | PB6 / PB7 | EDID, unused so far |
+| DDC_SCL_MCU / DDC_SDA_MCU | PB6 / PB7 | EDID (`FHS_CEC_EDID`) |
 | BOOT0 | | `DFU` jumper |
 
 HPD and HDMI 5V are not wired to the MCU on this revision.
@@ -94,7 +97,9 @@ No crystal. SYSCLK and the USB clock are HSI48; CRS trims it against the host's 
 - **Receive filter in software.** Full listening mode always (reduced mode wedges, see below).
   Forwarded: broadcast, frames to an acked address, everything with monitor-all.
 - **Physical address** is stored in flash (`SET_PHYS_ADDR`), default `1.0.0.0`. The driver reads
-  it at probe. Not yet read from EDID.
+  it at probe, after trying the display's EDID (`GET_EDID`).
+- **EDID** is read over DDC on request, one block per `GET_EDID`. The read blocks the main loop
+  for ~240 ms, so the driver only asks at probe.
 
 ## Debug console
 
