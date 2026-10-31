@@ -1,0 +1,22 @@
+# WebUSB test bench for the dongle. Needs a Chromium browser.
+
+[tools]
+node = "24"
+pnpm = "11"
+
+[tasks.install]
+run = "pnpm install"
+
+[tasks.dev]
+description = "Serve on localhost (WebUSB needs a secure origin)"
+depends = ["install"]
+run = "pnpm dev"
+
+[tasks.build]
+depends = ["install"]
+run = "pnpm build"
+
+[tasks.check]
+description = "Typecheck and unit tests"
+depends = ["install"]
+run = ["pnpm check", "pnpm test"]
