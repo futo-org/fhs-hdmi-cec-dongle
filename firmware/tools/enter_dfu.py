@@ -8,7 +8,7 @@ import sys
 
 import serial
 
-port = sys.argv[1] if len(sys.argv) > 1 else "hwgrep://1209:0001"
+port = sys.argv[1] if len(sys.argv) > 1 else "hwgrep://3a4c:4663"
 baud = int(sys.argv[2]) if len(sys.argv) > 2 else 115200
 
 try:

@@ -18,9 +18,8 @@
 #include <stdint.h>
 #endif
 
-/* pid.codes test ID until the FUTO-owned VID:PID is purchased. */
-#define FHS_CEC_USB_VID 0x1209
-#define FHS_CEC_USB_PID 0x0001
+#define FHS_CEC_USB_VID 0x3a4c
+#define FHS_CEC_USB_PID 0x4663
 
 #define FHS_CEC_USB_CLASS    0xFF
 #define FHS_CEC_USB_SUBCLASS 0x01

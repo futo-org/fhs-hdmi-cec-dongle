@@ -17,7 +17,7 @@ PYSERIAL = "uv run --quiet --with pyserial==3.5"
 # USB CDC debug console (Debug preset), found by USB VID:PID instead of a fixed
 # device node, so the same task works on Linux (/dev/ttyACM*), macOS
 # (/dev/cu.usbmodem*) and Windows (COM*). VID:PID from driver/fhs-cec-proto.h.
-SERIAL_PORT = "{{ env.SERIAL_PORT | default(value='hwgrep://1209:0001') }}"
+SERIAL_PORT = "{{ env.SERIAL_PORT | default(value='hwgrep://3a4c:4663') }}"
 ELF = "build/{{ env.PRESET | default(value='Debug') }}/fhs-hdmi-controller.elf"
 BIN = "build/{{ env.PRESET | default(value='Debug') }}/fhs-hdmi-controller.bin"
 DFU_DEVICE = "0483:df11"        # STM32 ROM bootloader

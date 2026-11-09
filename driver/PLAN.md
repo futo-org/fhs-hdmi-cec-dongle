@@ -7,7 +7,7 @@ Scope decisions:
 - **Deliverable: a DKMS package.** Not upstreamed. Installable on any distro, FHS included. FHS image integration is handled separately (notes at the end).
 - **Driver-controlled only.** The dongle does nothing on the CEC bus until the driver enables it. The debug serial shell is a compile-time option.
 - **TinyUSB** for the firmware USB stack.
-- **VID:PID:** dummy for now (`0x1209:0x0001`, the pid.codes test ID), defined once in `fhs-cec-proto.h`. Replace it with the FUTO-owned ID when it's purchased. No public DKMS release until then.
+- **VID:PID:** `0x3a4c:0x4663`, defined once in `fhs-cec-proto.h`.
 
 ## What Linux gives us
 

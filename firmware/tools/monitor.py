@@ -115,7 +115,7 @@ def session(ser):
 
 def main():
     spec = sys.argv[1] if len(sys.argv) > 1 else os.environ.get(
-        "SERIAL_PORT", "hwgrep://1209:0001")
+        "SERIAL_PORT", "hwgrep://3a4c:4663")
     baud = int(sys.argv[2]) if len(sys.argv) > 2 else int(
         os.environ.get("BAUD", "115200"))
 
