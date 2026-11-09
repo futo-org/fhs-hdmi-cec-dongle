@@ -21,8 +21,14 @@ jobs:
     defaults:
       run:
         working-directory: hardware/pcb
+    env:
+      KICAD_CONFIG_HOME: /tmp/kicad
     steps:
       - uses: actions/checkout@v4
+      - name: Install stock footprint libs
+        run: |
+          mkdir -p "$KICAD_CONFIG_HOME/10.0"
+          cp /usr/share/kicad/template/fp-lib-table "$KICAD_CONFIG_HOME/10.0/"
       - name: DRC
         run: kicad-cli pcb drc --severity-error --severity-warning --exit-code-violations -o "$RUNNER_TEMP/drc.rpt" "$BOARD"
       - name: Report
