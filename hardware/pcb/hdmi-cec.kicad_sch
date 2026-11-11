@@ -10,6 +10,223 @@
 		(company "FUTO")
 	)
 	(lib_symbols
+		(symbol "74xGxx:74LVC1G17"
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(in_pos_files yes)
+			(duplicate_pin_numbers_are_jumpers no)
+			(property "Reference" "U"
+				(at 0 3.81 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(justify left)
+				)
+			)
+			(property "Value" "74LVC1G17"
+				(at 0 -3.81 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(justify left)
+				)
+			)
+			(property "Footprint" ""
+				(at -2.54 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Datasheet" "https://www.ti.com/lit/ds/symlink/sn74lvc1g17.pdf"
+				(at 0 -6.35 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(justify left)
+				)
+			)
+			(property "Description" "Single Schmitt Buffer Gate, Low-Voltage CMOS"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "ki_keywords" "Single Gate Buff Schmitt LVC CMOS"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "ki_fp_filters" "SOT?23* SOT?553* Texas?R-PDSO-G5?DCK* Texas?R-PDSO-N5?DRL* Texas?X2SON*0.8x0.8mm*P0.48mm*"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(symbol "74LVC1G17_0_1"
+				(polyline
+					(pts
+						(xy -7.62 6.35) (xy -7.62 -6.35) (xy 5.08 0) (xy -7.62 6.35)
+					)
+					(stroke
+						(width 0.254)
+						(type default)
+					)
+					(fill
+						(type background)
+					)
+				)
+				(polyline
+					(pts
+						(xy -3.81 -1.27) (xy -2.54 -1.27) (xy -2.54 1.27) (xy -1.27 1.27)
+					)
+					(stroke
+						(width 0.254)
+						(type default)
+					)
+					(fill
+						(type background)
+					)
+				)
+				(polyline
+					(pts
+						(xy -2.54 -1.27) (xy -1.27 -1.27) (xy -1.27 1.27) (xy 0 1.27)
+					)
+					(stroke
+						(width 0.254)
+						(type default)
+					)
+					(fill
+						(type background)
+					)
+				)
+			)
+			(symbol "74LVC1G17_1_1"
+				(pin no_connect line
+					(at -7.62 5.08 180)
+					(length 5.08)
+					(hide yes)
+					(name "NC"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin input line
+					(at -12.7 0 0)
+					(length 5.08)
+					(name ""
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "2"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin power_in line
+					(at -5.08 -10.16 90)
+					(length 5.08)
+					(name "GND"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "3"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin output line
+					(at 10.16 0 180)
+					(length 5.08)
+					(name ""
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "4"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin power_in line
+					(at -5.08 10.16 270)
+					(length 5.08)
+					(name "VCC"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "5"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+			)
+			(embedded_fonts no)
+		)
 		(symbol "Connector:TestPoint"
 			(pin_numbers
 				(hide yes)
@@ -7435,10 +7652,6 @@
 		(uuid "b1a5fe71-d4dd-4108-ab3f-84bf4bdd1963")
 	)
 	(no_connect
-		(at 280.67 109.22)
-		(uuid "225c74bf-6943-4664-af17-e9c99156e705")
-	)
-	(no_connect
 		(at 280.67 121.92)
 		(uuid "a270fe5a-eb42-4fb8-a4aa-b8382d9838f3")
 	)
@@ -7451,7 +7664,7 @@
 		(uuid "038673bb-3bde-4029-a109-c840477d56aa")
 	)
 	(no_connect
-		(at 280.67 129.54)
+		(at 316.23 71.12)
 		(uuid "5add050c-148e-4391-aca1-67aa8e10c776")
 	)
 	(no_connect
@@ -7484,7 +7697,7 @@
 	)
 	(wire
 		(pts
-			(xy 316.23 71.12) (xy 320.04 71.12)
+			(xy 280.67 129.54) (xy 276.86 129.54)
 		)
 		(stroke
 			(width 0)
@@ -7578,16 +7791,16 @@
 	)
 	(global_label "LED_DRV"
 		(shape bidirectional)
-		(at 320.04 71.12 0)
+		(at 276.86 129.54 180)
 		(effects
 			(font
 				(size 1.27 1.27)
 			)
-			(justify left)
+			(justify right)
 		)
 		(uuid "5d3697d1-42cf-46f7-a736-1acaa6d3ecc4")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 320.04 71.12 0)
+			(at 276.86 129.54 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -7687,8 +7900,8 @@
 		)
 	)
 	(no_connect
-		(at 316.23 68.58)
-		(uuid "9c82668e-76dd-4442-a6ee-62fe0dcae2ab")
+		(at 280.67 109.22)
+		(uuid "225c74bf-6943-4664-af17-e9c99156e705")
 	)
 	(no_connect
 		(at 316.23 81.28)
@@ -14585,6 +14798,63 @@
 			)
 		)
 	)
+	(text "HPD Sense" (exclude_from_sim no) (at 337.82 101.6 0) (effects (font (size 2 2) (bold yes)) (justify left bottom)) (uuid "c87e9859-72f4-47e7-b002-38829c2e5d5f"))
+	(text "HPD is up to 5.3 V. The LVC input takes 5.5 V with the\ndongle unpowered, so the TV can't back-power the MCU." (exclude_from_sim no) (at 337.82 152.4 0) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "932a723c-4eb4-4b98-a9f9-a3034a3b3ed6"))
+	(global_label "HDMI_HPD" (shape input) (at 337.82 127 180) (effects (font (size 1.27 1.27)) (justify right)) (uuid "310194ba-46ad-475c-a2e9-a1806bdf8c6f")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}" (at 337.82 127 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27)))))
+	(global_label "HPD_MCU" (shape output) (at 381 127 0) (effects (font (size 1.27 1.27)) (justify left)) (uuid "e3e56a67-346d-4fc1-9e23-ff2c4618bbe1")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}" (at 381 127 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27)))))
+	(global_label "HPD_MCU" (shape input) (at 320.04 68.58 0) (effects (font (size 1.27 1.27)) (justify left)) (uuid "035471d8-11fe-46b8-bddd-653324765306")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}" (at 320.04 68.58 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27)))))
+	(wire (pts (xy 316.23 68.58) (xy 320.04 68.58)) (stroke (width 0) (type default)) (uuid "6a81dc68-0a09-4382-9808-ec341357d205"))
+	(wire (pts (xy 337.82 127) (xy 345.44 127)) (stroke (width 0) (type default)) (uuid "c0fbb2e3-a5f4-464d-8158-41523d0799f3"))
+	(wire (pts (xy 345.44 127) (xy 353.06 127)) (stroke (width 0) (type default)) (uuid "96c68ff6-1585-4079-8dd9-841c652f5558"))
+	(wire (pts (xy 360.68 116.84) (xy 360.68 111.76)) (stroke (width 0) (type default)) (uuid "1e64b816-3453-4d4e-8864-2b94ceaab98c"))
+	(wire (pts (xy 375.92 127) (xy 381 127)) (stroke (width 0) (type default)) (uuid "bf5988ac-edb7-48a8-964b-14619435096d"))
+	(junction (at 345.44 127) (diameter 0) (color 0 0 0 0) (uuid "af4191e0-37f0-40a2-9001-ac2bcf5745da"))
+	(symbol (lib_id "74xGxx:74LVC1G17") (at 365.76 127 0) (unit 1) (body_style 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (in_pos_files yes) (dnp no) (uuid "1e966e90-39f9-4d95-a8f6-2322769d73fd")
+		(property "Reference" "U5" (at 365.76 120.65 0) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27)) (justify left)))
+		(property "Value" "SN74LVC1G17DRLR" (at 365.76 133.35 0) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27)) (justify left)))
+		(property "Footprint" "Package_TO_SOT_SMD:SOT-553" (at 363.22 127 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27))))
+		(property "Datasheet" "https://www.ti.com/lit/ds/symlink/sn74lvc1g17.pdf" (at 365.76 133.35 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27))))
+		(property "Description" "Single Schmitt Buffer Gate, Low-Voltage CMOS" (at 365.76 127 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27))))
+		(pin "1" (uuid "3d63e96a-6b7e-41d7-ada2-a64b49c05fc9")) (pin "2" (uuid "5aeefa60-4907-482b-a2c4-c5553d70ec78"))
+		(pin "3" (uuid "163e8625-d7f9-41d1-bf94-316ee28c7297")) (pin "4" (uuid "c9ae6739-97e1-4e0b-a3f2-a0d307733907"))
+		(pin "5" (uuid "3890de52-7e2a-4faf-b42d-3d261ee5ffb4"))
+		(instances (project "hdmi-cec" (path "/d1f83add-0ff9-52f4-acd6-a6f8ec38997c" (reference "U5") (unit 1)))))
+	(symbol (lib_id "Device:R") (at 345.44 130.81 0) (unit 1) (body_style 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (in_pos_files yes) (dnp no) (uuid "801e90c1-6be4-4163-9c46-0aa96aed8756")
+		(property "Reference" "R12" (at 347.98 129.54 0) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27)) (justify left)))
+		(property "Value" "200k" (at 347.98 132.08 0) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27)) (justify left)))
+		(property "Footprint" "hdmi-cec:R0402" (at 345.44 130.81 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27))))
+		(property "Datasheet" "" (at 345.44 130.81 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27))))
+		(property "Description" "" (at 345.44 130.81 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27))))
+		(property "LCSC" "C25764" (at 345.44 130.81 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27))))
+		(pin "1" (uuid "02e7b1c3-a3a1-40b5-bd03-8793a010e8f0")) (pin "2" (uuid "fc96bead-6b08-4ef8-8db2-376d5aa6b99c"))
+		(instances (project "hdmi-cec" (path "/d1f83add-0ff9-52f4-acd6-a6f8ec38997c" (reference "R12") (unit 1)))))
+	(symbol (lib_id "power:GND") (at 345.44 134.62 0) (unit 1) (body_style 1) (exclude_from_sim no) (in_bom no) (on_board yes) (in_pos_files yes) (dnp no) (uuid "3d254859-86f6-414d-b62e-dc2aea51f34a")
+		(property "Reference" "#PWR065" (at 345.44 140.97 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27))))
+		(property "Value" "GND" (at 345.44 138.43 0) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27))))
+		(property "Footprint" "" (at 345.44 134.62 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27))))
+		(property "Datasheet" "" (at 345.44 134.62 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27))))
+		(property "Description" "" (at 345.44 134.62 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27))))
+		(pin "1" (uuid "9777412e-e86e-4dee-bb65-50204a9b7219"))
+		(instances (project "hdmi-cec" (path "/d1f83add-0ff9-52f4-acd6-a6f8ec38997c" (reference "#PWR065") (unit 1)))))
+	(symbol (lib_id "power:GND") (at 360.68 137.16 0) (unit 1) (body_style 1) (exclude_from_sim no) (in_bom no) (on_board yes) (in_pos_files yes) (dnp no) (uuid "b830087f-88ff-4a1e-85b3-aefdbbd4c13a")
+		(property "Reference" "#PWR066" (at 360.68 143.51 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27))))
+		(property "Value" "GND" (at 360.68 140.97 0) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27))))
+		(property "Footprint" "" (at 360.68 137.16 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27))))
+		(property "Datasheet" "" (at 360.68 137.16 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27))))
+		(property "Description" "" (at 360.68 137.16 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27))))
+		(pin "1" (uuid "192d8feb-7f80-4200-9fae-b689ca3ba087"))
+		(instances (project "hdmi-cec" (path "/d1f83add-0ff9-52f4-acd6-a6f8ec38997c" (reference "#PWR066") (unit 1)))))
+	(symbol (lib_id "power:+3V3") (at 360.68 111.76 0) (unit 1) (body_style 1) (exclude_from_sim no) (in_bom no) (on_board yes) (in_pos_files yes) (dnp no) (uuid "bb11cd13-eb43-4652-9aac-31a8dae9bcb1")
+		(property "Reference" "#PWR067" (at 360.68 115.57 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27))))
+		(property "Value" "+3V3" (at 360.68 108.204 0) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27))))
+		(property "Footprint" "" (at 360.68 111.76 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27))))
+		(property "Datasheet" "" (at 360.68 111.76 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27))))
+		(property "Description" "" (at 360.68 111.76 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27))))
+		(pin "1" (uuid "0dc437d6-8767-4d14-993d-6e8da8f64acd"))
+		(instances (project "hdmi-cec" (path "/d1f83add-0ff9-52f4-acd6-a6f8ec38997c" (reference "#PWR067") (unit 1)))))
 	(sheet_instances
 		(path "/"
 			(page "1")
