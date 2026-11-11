@@ -69,12 +69,13 @@ to the MCU: `EDID=OFF mise run build`. The driver then falls back to the stored 
 |---|---|---|
 | CEC_MCU | PB8, AF0 | through 100R and Q1 to HDMI pin 13, open drain, internal pull-up. Q1 cuts the pin off the bus when unpowered |
 | USB_DM / USB_DP | PA11 / PA12 | USB-C, internal D+ pull-up |
-| LED_DRV | PA1 | active high. On while the driver has the adapter enabled |
+| LED_DRV | PB13 | active high. On while the driver has the adapter enabled |
+| HPD_MCU | PA0 | HDMI HPD through U5 Schmitt buffer, unused by firmware |
 | UART_TX / UART_RX | PA2 / PA3 | test points, unused by firmware |
 | DDC_SCL_MCU / DDC_SDA_MCU | PB6 / PB7 | EDID (`FHS_CEC_EDID`) |
 | BOOT0 | | `DFU` jumper |
 
-HPD and HDMI 5V are not wired to the MCU on this revision.
+HDMI 5V is not wired to the MCU on this revision.
 
 No crystal. SYSCLK and the USB clock are HSI48; CRS trims it against the host's 1 kHz SOF. HSI
 (8 MHz) stays on for the CEC kernel clock, HSI/244 = 32.787 kHz.
