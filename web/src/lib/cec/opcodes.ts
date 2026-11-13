@@ -142,6 +142,8 @@ const hex = (name = 'Payload (hex)'): OperandSpec => ({ kind: OperandKind.HEX, n
 const byte = (name: string): OperandSpec => ({ kind: OperandKind.BYTE, name });
 const choice = (name: string, opts: EnumOption[]): OperandSpec => ({ kind: OperandKind.ENUM, name, options: opts });
 
+export const OSD_NAME_OPERAND: OperandSpec = { kind: OperandKind.ASCII, name: 'OSD name', maxLength: OSD_NAME_MAX };
+
 const STATUS_REQUEST = options([
   [1, 'On'],
   [2, 'Off'],
@@ -228,9 +230,7 @@ export const OPCODES: OpcodeSpec[] = [
     choice('Device type', DEVICE_TYPES),
   ]),
   spec(Opcode.GIVE_OSD_NAME, 'Give OSD Name', OpcodeGroup.INFO, TV),
-  spec(Opcode.SET_OSD_NAME, 'Set OSD Name', OpcodeGroup.INFO, TV, [
-    { kind: OperandKind.ASCII, name: 'Name', maxLength: OSD_NAME_MAX },
-  ]),
+  spec(Opcode.SET_OSD_NAME, 'Set OSD Name', OpcodeGroup.INFO, TV, [OSD_NAME_OPERAND]),
   spec(Opcode.SET_OSD_STRING, 'Set OSD String', OpcodeGroup.INFO, TV, [
     choice(
       'Display',

@@ -23,21 +23,32 @@ export function extensionCount(base: Uint8Array): number {
 // From the HDMI vendor-specific data block of a CTA-861 extension.
 export function edidPhysAddr(blocks: Uint8Array[]): number {
   for (const ext of blocks.slice(1)) {
-    if (ext.length < EDID_BLOCK_SIZE || ext[0] !== CTA_EXT_TAG) {
-      continue;
+    const pa = ctaPhysAddr(ext);
+    if (pa !== PHYS_ADDR_INVALID) {
+      return pa;
     }
-    const end = ext[CTA_DTD_OFFSET];
-    let i = CTA_DATA_BLOCKS_OFFSET;
-    while (i < end) {
-      const tag = ext[i] >> DATA_BLOCK_TAG_SHIFT;
-      const len = ext[i] & DATA_BLOCK_LEN_MASK;
-      const isHdmiVsdb =
-        tag === VENDOR_SPECIFIC_TAG && len >= VSDB_PHYS_ADDR_OFFSET + 1 && HDMI_OUI.every((b, j) => ext[i + 1 + j] === b);
-      if (isHdmiVsdb) {
-        return readPhysAddr(ext, i + VSDB_PHYS_ADDR_OFFSET);
-      }
-      i += len + 1;
+  }
+  return PHYS_ADDR_INVALID;
+}
+
+function ctaPhysAddr(ext: Uint8Array): number {
+  const end = ext[CTA_DTD_OFFSET];
+  if (ext.length < EDID_BLOCK_SIZE || ext[0] !== CTA_EXT_TAG || end >= EDID_BLOCK_SIZE) {
+    return PHYS_ADDR_INVALID;
+  }
+  let i = CTA_DATA_BLOCKS_OFFSET;
+  while (i < end) {
+    const tag = ext[i] >> DATA_BLOCK_TAG_SHIFT;
+    const len = ext[i] & DATA_BLOCK_LEN_MASK;
+    if (i + 1 + len > end) {
+      return PHYS_ADDR_INVALID;
     }
+    const isHdmiVsdb =
+      tag === VENDOR_SPECIFIC_TAG && len >= VSDB_PHYS_ADDR_OFFSET + 1 && HDMI_OUI.every((b, j) => ext[i + 1 + j] === b);
+    if (isHdmiVsdb) {
+      return readPhysAddr(ext, i + VSDB_PHYS_ADDR_OFFSET);
+    }
+    i += len + 1;
   }
   return PHYS_ADDR_INVALID;
 }

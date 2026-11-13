@@ -1,7 +1,7 @@
 // Mirrors driver/fhs-cec-proto.h. Multi-byte fields are little-endian.
 
-export const USB_VID = 0x1209;
-export const USB_PID = 0x0001;
+export const USB_VID = 0x3a4c;
+export const USB_PID = 0x4663;
 
 export const USB_CLASS = 0xff;
 export const USB_SUBCLASS = 0x01;

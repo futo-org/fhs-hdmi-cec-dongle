@@ -1,5 +1,5 @@
 import { TxStatus, TX_STATUS_NAMES } from '$lib/usb/proto';
-import type { CecBus } from './bus';
+import type { CecBus, FramePredicate } from './bus';
 import {
   ALL_LOGICAL_ADDRESSES,
   CecVersion,
@@ -34,6 +34,28 @@ function expectOk(status: TxStatus, what: string): void {
   }
 }
 
+async function sendForReply(
+  bus: CecBus,
+  dest: LogicalAddress,
+  request: Opcode,
+  operands: number[],
+  predicate: FramePredicate,
+): Promise<{ status: TxStatus; reply: DecodedFrame | null }> {
+  const pending = bus.expectReply(predicate);
+  let status: TxStatus;
+  try {
+    status = await bus.send(dest, request, operands);
+  } catch (err) {
+    pending.cancel();
+    throw err;
+  }
+  if (status !== TxStatus.OK) {
+    pending.cancel();
+    return { status, reply: null };
+  }
+  return { status, reply: await pending.arm(REPLY_TIMEOUT_MS) };
+}
+
 // Sends a request and waits for its reply or a Feature Abort.
 export async function query(
   bus: CecBus,
@@ -42,17 +64,15 @@ export async function query(
   reply: Opcode,
   operands: number[] = [],
 ): Promise<DecodedFrame | null> {
-  const answer = bus.waitFor(
+  const { reply: frame } = await sendForReply(
+    bus,
+    dest,
+    request,
+    operands,
     (f) =>
       f.initiator === dest &&
       (f.opcode === reply || (f.opcode === Opcode.FEATURE_ABORT && f.operands[0] === request)),
-    REPLY_TIMEOUT_MS,
   );
-  const status = await bus.send(dest, request, operands);
-  if (status !== TxStatus.OK) {
-    return null;
-  }
-  const frame = await answer;
   return frame?.opcode === reply ? frame : null;
 }
 
@@ -124,15 +144,14 @@ export async function wakeAndWait(bus: CecBus, timeoutMs: number, intervalMs: nu
 }
 
 export async function systemAudioOn(bus: CecBus): Promise<boolean> {
-  const answer = bus.waitFor(
+  const { status, reply } = await sendForReply(
+    bus,
+    LogicalAddress.AUDIO_SYSTEM,
+    Opcode.SYSTEM_AUDIO_MODE_REQUEST,
+    physAddrBytes(bus.physAddr),
     (f) => f.initiator === LogicalAddress.AUDIO_SYSTEM && f.opcode === Opcode.SET_SYSTEM_AUDIO_MODE,
-    REPLY_TIMEOUT_MS,
   );
-  expectOk(
-    await bus.send(LogicalAddress.AUDIO_SYSTEM, Opcode.SYSTEM_AUDIO_MODE_REQUEST, physAddrBytes(bus.physAddr)),
-    'System Audio Mode Request',
-  );
-  const reply = await answer;
+  expectOk(status, 'System Audio Mode Request');
   const on = reply?.operands[0] === 1;
   bus.note(`system audio mode: ${reply ? (on ? 'on' : 'off') : 'no reply'}`);
   return on;

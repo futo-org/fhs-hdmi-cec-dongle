@@ -12,6 +12,32 @@
 
   let { session }: { session: CecSession } = $props();
 
+  const uid = $props.id();
+  const ids = {
+    physAddr: `${uid}-phys-addr`,
+    osdName: `${uid}-osd-name`,
+    monitorAll: `${uid}-monitor-all`,
+    autoReply: `${uid}-auto-reply`,
+  };
+
+  // svelte-ignore state_referenced_locally
+  let osdNameText = $state(session.osdName);
+  let osdNameError = $state<string | null>(null);
+
+  function updateOsdName(text: string) {
+    osdNameText = text;
+    try {
+      session.setOsdName(text);
+      osdNameError = null;
+    } catch (err) {
+      osdNameError = err instanceof Error ? err.message : String(err);
+    }
+  }
+
+  function setMonitorAll(on: boolean) {
+    void session.run('monitor all', () => session.setMonitorAll(on));
+  }
+
   let physAddrText = $state('');
   $effect(() => {
     physAddrText = formatPhysAddr(session.physAddr);
@@ -63,9 +89,9 @@
   {#if session.connected}
     <Card.Content class="grid gap-4">
       <div class="grid grid-cols-[8rem_1fr] items-center gap-x-3 gap-y-2 text-sm">
-        <Label>Physical address</Label>
+        <Label for={ids.physAddr}>Physical address</Label>
         <div class="flex flex-wrap items-center gap-2">
-          <Input class="h-8 w-28 font-mono" bind:value={physAddrText} />
+          <Input id={ids.physAddr} class="h-8 w-28 font-mono" bind:value={physAddrText} />
           <Button size="sm" variant="outline" onclick={() => applyPhysAddr(false)}>Use</Button>
           <Button size="sm" variant="outline" onclick={() => applyPhysAddr(true)}>Store in flash</Button>
           {#if session.hasEdid}
@@ -87,15 +113,30 @@
           </Button>
         </div>
 
-        <Label>OSD name</Label>
-        <Input class="h-8 w-40" maxlength={OSD_NAME_MAX} bind:value={session.osdName} />
-
-        <Label>Monitor all</Label>
-        <Switch checked={session.monitorAll} onCheckedChange={(on) => session.setMonitorAll(on)} />
-
-        <Label>Auto-reply</Label>
+        <Label for={ids.osdName}>OSD name</Label>
         <div class="flex items-center gap-2">
-          <Switch bind:checked={session.autoReply} />
+          <Input
+            id={ids.osdName}
+            class="h-8 w-40"
+            maxlength={OSD_NAME_MAX}
+            aria-invalid={osdNameError !== null}
+            bind:value={() => osdNameText, updateOsdName}
+          />
+          {#if osdNameError}
+            <span class="text-destructive">{osdNameError}</span>
+          {/if}
+        </div>
+
+        <Label for={ids.monitorAll}>Monitor all</Label>
+        <Switch
+          id={ids.monitorAll}
+          disabled={!!session.busy}
+          bind:checked={() => session.monitorAll, setMonitorAll}
+        />
+
+        <Label for={ids.autoReply}>Auto-reply</Label>
+        <div class="flex items-center gap-2">
+          <Switch id={ids.autoReply} bind:checked={session.autoReply} />
           <span class="text-muted-foreground">physical address, OSD name, version, power, active source</span>
         </div>
       </div>
