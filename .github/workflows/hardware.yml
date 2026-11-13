@@ -50,6 +50,8 @@ jobs:
         run: kicad-cli pcb export gerbers --check-zones --layers "$GERBER_LAYERS" -o "$OUT/gerbers/" "$BOARD"
       - name: Drill
         run: kicad-cli pcb export drill --excellon-separate-th -o "$OUT/gerbers/" "$BOARD"
+      - name: Install curl for mise
+        run: apt-get update -qq && apt-get install -y -qq curl
       - uses: jdx/mise-action@v2
         with:
           install: false
