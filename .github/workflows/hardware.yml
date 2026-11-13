@@ -65,27 +65,17 @@ jobs:
             kicad-cli pcb export drill --excellon-separate-th -o "$OUT/panel/$name/" "$board"
           done
       - name: STEP
-        run: kicad-cli pcb export step --subst-models -o "$STEP" "$BOARD"
-      - name: BOM
+        run: kicad-cli pcb export step --subst-models -o "$OUT/hdmi-cec.step" "$BOARD"
+      - name: BOM and CPL
         run: |
           mkdir -p "$OUT/assembly"
-          kicad-cli sch export bom --exclude-dnp --ref-range-delimiter '' \
-            --fields 'Value,Reference,${FOOTPRINT_NAME},LCSC' \
-            --labels 'Comment,Designator,Footprint,LCSC Part #' \
-            --group-by 'Value,${FOOTPRINT_NAME},LCSC' \
-            -o "$OUT/assembly/hdmi-cec-bom.csv" "$SCHEMATIC"
-      # Placements are limited to BOM refs so test points, jumpers and the logo stay out of the CPL
-      - name: CPL
-        run: |
-          kicad-cli sch export bom --exclude-dnp --fields Reference --group-by '' -o "$RUNNER_TEMP/refs.csv" "$SCHEMATIC"
+          kicad-cli sch export bom --exclude-dnp --group-by '' --field-delimiter '|' --string-delimiter '' \
+            --fields 'Reference,Value,${FOOTPRINT_NAME},LCSC' -o "$RUNNER_TEMP/parts.txt" "$SCHEMATIC"
           for board in "$BOARD" $PANELS; do
             name=$(basename "$board" .kicad_pcb)
             kicad-cli pcb export pos --exclude-dnp --format csv --units mm --side both -o "$RUNNER_TEMP/$name-pos.csv" "$board"
-            awk -F, 'NR == FNR { gsub(/"/, ""); refs[$1]; next }
-              FNR == 1 { print "Designator,Mid X,Mid Y,Layer,Rotation"; next }
-              { gsub(/"/, "") }
-              $1 in refs { printf "%s,%.4fmm,%.4fmm,%s,%d\n", $1, $4, $5, ($7 == "top" ? "Top" : "Bottom"), $6 }' \
-              "$RUNNER_TEMP/refs.csv" "$RUNNER_TEMP/$name-pos.csv" > "$OUT/assembly/$name-cpl.csv"
+            awk -F, -v bom="$OUT/assembly/$name-bom.csv" -f jlc-assembly.awk \
+              "$RUNNER_TEMP/parts.txt" "$RUNNER_TEMP/$name-pos.csv" > "$OUT/assembly/$name-cpl.csv"
           done
       - uses: actions/upload-artifact@v4
         with:
