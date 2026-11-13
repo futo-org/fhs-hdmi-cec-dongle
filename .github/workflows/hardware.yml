@@ -9,8 +9,8 @@ on:
 env:
   BOARD: hdmi-cec.kicad_pcb
   SCHEMATIC: hdmi-cec.kicad_sch
-  OUT: production/hdmi-cec
-  STEP: production/hdmi-cec.step
+  OUT: production
+  PANELS: production/panel/hdmi-cec-panel.kicad_pcb production/panel/hdmi-cec-panel-mousebites.kicad_pcb
   GERBER_LAYERS: F.Cu,In1.Cu,In2.Cu,B.Cu,F.Paste,B.Paste,F.Silkscreen,B.Silkscreen,F.Mask,B.Mask,Edge.Cuts
 
 jobs:
@@ -50,10 +50,18 @@ jobs:
         run: kicad-cli pcb export gerbers --check-zones --layers "$GERBER_LAYERS" -o "$OUT/gerbers/" "$BOARD"
       - name: Drill
         run: kicad-cli pcb export drill --excellon-separate-th -o "$OUT/gerbers/" "$BOARD"
-      - name: Zip gerbers
+      - uses: jdx/mise-action@v2
+        with:
+          install: false
+      - name: Panel
+        run: mise trust && mise install && mise run panel && mise run panel-mousebites
+      - name: Panel gerbers
         run: |
-          (cd "$OUT/gerbers" && python3 -m zipfile -c ../hdmi-cec-gerbers.zip *)
-          rm -r "$OUT/gerbers"
+          for board in $PANELS; do
+            name=$(basename "$board" .kicad_pcb)
+            kicad-cli pcb export gerbers --check-zones --layers "$GERBER_LAYERS" -o "$OUT/panel/$name/" "$board"
+            kicad-cli pcb export drill --excellon-separate-th -o "$OUT/panel/$name/" "$board"
+          done
       - name: STEP
         run: kicad-cli pcb export step --subst-models -o "$STEP" "$BOARD"
       - name: BOM
@@ -68,16 +76,27 @@ jobs:
       - name: CPL
         run: |
           kicad-cli sch export bom --exclude-dnp --fields Reference --group-by '' -o "$RUNNER_TEMP/refs.csv" "$SCHEMATIC"
-          kicad-cli pcb export pos --exclude-dnp --format csv --units mm --side both -o "$RUNNER_TEMP/pos.csv" "$BOARD"
-          awk -F, 'NR == FNR { gsub(/"/, ""); refs[$1]; next }
-            FNR == 1 { print "Designator,Mid X,Mid Y,Layer,Rotation"; next }
-            { gsub(/"/, "") }
-            $1 in refs { printf "%s,%.4fmm,%.4fmm,%s,%d\n", $1, $4, $5, ($7 == "top" ? "Top" : "Bottom"), $6 }' \
-            "$RUNNER_TEMP/refs.csv" "$RUNNER_TEMP/pos.csv" > "$OUT/assembly/hdmi-cec-cpl.csv"
+          for board in "$BOARD" $PANELS; do
+            name=$(basename "$board" .kicad_pcb)
+            kicad-cli pcb export pos --exclude-dnp --format csv --units mm --side both -o "$RUNNER_TEMP/$name-pos.csv" "$board"
+            awk -F, 'NR == FNR { gsub(/"/, ""); refs[$1]; next }
+              FNR == 1 { print "Designator,Mid X,Mid Y,Layer,Rotation"; next }
+              { gsub(/"/, "") }
+              $1 in refs { printf "%s,%.4fmm,%.4fmm,%s,%d\n", $1, $4, $5, ($7 == "top" ? "Top" : "Bottom"), $6 }' \
+              "$RUNNER_TEMP/refs.csv" "$RUNNER_TEMP/$name-pos.csv" > "$OUT/assembly/$name-cpl.csv"
+          done
       - uses: actions/upload-artifact@v4
         with:
           name: hdmi-cec-production
           path: hardware/pcb/${{ env.OUT }}/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hdmi-cec-panel-gerbers
+          path: hardware/pcb/production/panel/hdmi-cec-panel/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hdmi-cec-panel-mousebites-gerbers
+          path: hardware/pcb/production/panel/hdmi-cec-panel-mousebites/
       - uses: actions/upload-artifact@v4
         with:
           name: hdmi-cec-step
