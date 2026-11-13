@@ -1,0 +1,42 @@
+name: case
+
+on:
+  push:
+    paths: ["hardware/case/**", ".github/workflows/case.yml"]
+  pull_request:
+    paths: ["hardware/case/**", ".github/workflows/case.yml"]
+
+env:
+  SOLIDCRAFT_VERSION: 0.40.1
+  SOLIDCRAFT_SHA256: 0244019d315b37fa9506e09a4ae1cada50713f557dd6be413bd578147350966e
+  OUT: production
+
+jobs:
+  production:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: hardware/case
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install SolidCraft CLI
+        run: |
+          archive="solidcraft-$SOLIDCRAFT_VERSION-linux-x86_64.tar.gz"
+          curl -fsSL -o "$RUNNER_TEMP/$archive" "https://github.com/tangency-labs/solidcraft/releases/download/v$SOLIDCRAFT_VERSION/$archive"
+          echo "$SOLIDCRAFT_SHA256  $RUNNER_TEMP/$archive" | sha256sum -c -
+          tar -xzf "$RUNNER_TEMP/$archive" -C "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/solidcraft-$SOLIDCRAFT_VERSION-linux-x86_64/bin" >> "$GITHUB_PATH"
+      - name: STEP and STLs
+        run: |
+          mkdir -p "$OUT"
+          solidcraft-cli run export.json --in case.sc --quiet
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hdmi-cec-case-step
+          path: hardware/case/production/hdmi-cec-case.step
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hdmi-cec-case-stl
+          path: hardware/case/production/*.stl
+          if-no-files-found: error

@@ -1,0 +1,7 @@
+{"commands": [
+  {"command": "file.export_step", "params": {"path": "production/hdmi-cec-case.step", "bodies": ["Top Case", "Bottom Case", "Top Inlay", "Bottom Inlay"]}},
+  {"command": "file.export_stl", "params": {"path": "production/top-case.stl", "bodies": ["Top Case"], "quality": "fine"}},
+  {"command": "file.export_stl", "params": {"path": "production/top-inlay.stl", "bodies": ["Top Inlay"], "quality": "fine"}},
+  {"command": "file.export_stl", "params": {"path": "production/bottom-case.stl", "bodies": ["Bottom Case"], "quality": "fine"}},
+  {"command": "file.export_stl", "params": {"path": "production/bottom-inlay.stl", "bodies": ["Bottom Inlay"], "quality": "fine"}}
+]}

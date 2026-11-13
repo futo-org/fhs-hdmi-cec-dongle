@@ -3,3 +3,6 @@
 
 # Lock files
 .~*.sc.lock
+
+# Production outputs (built in CI)
+production/
