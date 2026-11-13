@@ -8,12 +8,23 @@ import {
   type Info,
   type Status,
 } from '$lib/usb/proto';
-import type { CecBus, FramePredicate } from './bus';
+import type { CecBus } from './bus';
 import { CecVersion, DEFAULT_OSD_NAME, DeviceType, LogicalAddress, PowerStatus, UNREGISTERED } from './constants';
 import { checksumOk, edidPhysAddr, extensionCount } from './edid';
-import { buildFrame, decodeFrame, describeFrame, formatPhysAddr, physAddrBytes, toHex, type DecodedFrame } from './frame';
+import {
+  buildFrame,
+  decodeFrame,
+  describeFrame,
+  encodeOperand,
+  formatPhysAddr,
+  physAddrBytes,
+  readPhysAddr,
+  toHex,
+  type DecodedFrame,
+} from './frame';
 import { allocateLogicalAddress, type DeviceReport } from './macros';
-import { Opcode } from './opcodes';
+import { OSD_NAME_OPERAND, Opcode } from './opcodes';
+import { ReplyWaiters, type FramePredicate, type PendingReply } from './replies';
 
 const LOG_LIMIT = 500;
 
@@ -33,11 +44,6 @@ export interface LogEntry {
   status?: string;
 }
 
-interface Waiter {
-  predicate: FramePredicate;
-  resolve: (frame: DecodedFrame | null) => void;
-}
-
 export class CecSession implements CecBus {
   dongle = $state<Dongle | null>(null);
   info = $state<Info | null>(null);
@@ -54,7 +60,7 @@ export class CecSession implements CecBus {
   log = $state<LogEntry[]>([]);
   devices = $state<DeviceReport[]>([]);
 
-  private waiters = new Set<Waiter>();
+  private readonly replies = new ReplyWaiters();
 
   readonly supported = Dongle.isSupported();
 
@@ -83,16 +89,26 @@ export class CecSession implements CecBus {
         onDisconnect: (reason) => this.dropConnection(reason),
       });
       this.dongle = dongle;
-      this.info = await dongle.getInfo();
-      this.physAddr = this.info.physAddr;
-      this.note(`connected to ${dongle.name}, firmware ${this.info.fwVersion}`);
-      if (this.hasEdid) {
-        await this.readEdid();
+      try {
+        await this.initialize(dongle);
+      } catch (err) {
+        await dongle.close().catch(() => undefined);
+        this.dropConnection('initialization failed');
+        throw err;
       }
-      await dongle.setEnable(true);
-      await dongle.setMonitorAll(this.monitorAll);
-      await this.refreshStatus();
     });
+  }
+
+  private async initialize(dongle: Dongle): Promise<void> {
+    this.info = await dongle.getInfo();
+    this.physAddr = this.info.physAddr;
+    this.note(`connected to ${dongle.name}, firmware ${this.info.fwVersion}`);
+    if (this.hasEdid) {
+      await this.readEdid();
+    }
+    await dongle.setEnable(true);
+    await dongle.setMonitorAll(this.monitorAll);
+    await this.refreshStatus();
   }
 
   async disconnect(): Promise<void> {
@@ -131,15 +147,24 @@ export class CecSession implements CecBus {
   }
 
   async storePhysAddr(pa: number): Promise<void> {
-    await this.run('store physical address', async () => {
-      await this.requireDongle().storePhysAddr(pa);
-      this.physAddr = pa;
-    });
+    await this.requireDongle().storePhysAddr(pa);
+    this.physAddr = pa;
   }
 
   async setMonitorAll(on: boolean): Promise<void> {
+    const previous = this.monitorAll;
     this.monitorAll = on;
-    await this.dongle?.setMonitorAll(on);
+    try {
+      await this.dongle?.setMonitorAll(on);
+    } catch (err) {
+      this.monitorAll = previous;
+      throw err;
+    }
+  }
+
+  setOsdName(name: string): void {
+    encodeOperand(OSD_NAME_OPERAND, name);
+    this.osdName = name;
   }
 
   async claimLogicalAddress(la: LogicalAddress): Promise<void> {
@@ -159,19 +184,8 @@ export class CecSession implements CecBus {
     return this.transmit(buildFrame(initiator, dest));
   }
 
-  waitFor(predicate: FramePredicate, timeoutMs: number): Promise<DecodedFrame | null> {
-    return new Promise((resolve) => {
-      const waiter: Waiter = {
-        predicate,
-        resolve: (frame) => {
-          clearTimeout(timer);
-          this.waiters.delete(waiter);
-          resolve(frame);
-        },
-      };
-      const timer = setTimeout(() => waiter.resolve(null), timeoutMs);
-      this.waiters.add(waiter);
-    });
+  expectReply(predicate: FramePredicate): PendingReply {
+    return this.replies.expect(predicate);
   }
 
   // Runs one user action at a time and logs its failure.
@@ -214,11 +228,7 @@ export class CecSession implements CecBus {
   private onFrame(frame: Uint8Array): void {
     this.append({ kind: LogKind.RX, text: describeFrame(frame), bytes: toHex(frame) });
     const decoded = decodeFrame(frame);
-    for (const waiter of this.waiters) {
-      if (waiter.predicate(decoded)) {
-        waiter.resolve(decoded);
-      }
-    }
+    this.replies.deliver(decoded);
     if (this.autoReply) {
       void this.reply(decoded).catch((err) => this.error(`auto-reply: ${err.message}`));
     }
@@ -236,6 +246,12 @@ export class CecSession implements CecBus {
       this.activeSource = false;
       return;
     }
+    if (f.dest === BROADCAST && f.opcode === Opcode.SET_STREAM_PATH && this.isStreamPathToUs(f)) {
+      if ((await this.send(BROADCAST, Opcode.ACTIVE_SOURCE, physAddrBytes(this.physAddr))) === TxStatus.OK) {
+        this.activeSource = true;
+      }
+      return;
+    }
     if (!toUs) {
       return;
     }
@@ -244,7 +260,7 @@ export class CecSession implements CecBus {
         await this.send(BROADCAST, Opcode.REPORT_PHYSICAL_ADDRESS, [...physAddrBytes(this.physAddr), this.deviceType]);
         break;
       case Opcode.GIVE_OSD_NAME:
-        await this.send(f.initiator, Opcode.SET_OSD_NAME, Array.from(this.osdName, (c) => c.charCodeAt(0)));
+        await this.send(f.initiator, Opcode.SET_OSD_NAME, encodeOperand(OSD_NAME_OPERAND, this.osdName));
         break;
       case Opcode.GET_CEC_VERSION:
         await this.send(f.initiator, Opcode.CEC_VERSION, [CecVersion.V1_4]);
@@ -253,6 +269,15 @@ export class CecSession implements CecBus {
         await this.send(f.initiator, Opcode.REPORT_POWER_STATUS, [PowerStatus.ON]);
         break;
     }
+  }
+
+  private isStreamPathToUs(f: DecodedFrame): boolean {
+    return (
+      this.logicalAddress !== UNREGISTERED &&
+      this.physAddr !== PHYS_ADDR_INVALID &&
+      f.operands.length >= 2 &&
+      readPhysAddr(f.operands, 0) === this.physAddr
+    );
   }
 
   private append(entry: Omit<LogEntry, 'id' | 'time'>): void {
@@ -276,9 +301,7 @@ export class CecSession implements CecBus {
     this.logicalAddress = UNREGISTERED;
     this.activeSource = false;
     this.devices = [];
-    for (const waiter of this.waiters) {
-      waiter.resolve(null);
-    }
+    this.replies.cancelAll();
     this.note(`disconnected: ${reason}`);
   }
 }

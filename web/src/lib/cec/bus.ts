@@ -1,9 +1,9 @@
 import type { TxStatus } from '$lib/usb/proto';
 import type { DeviceType, LogicalAddress } from './constants';
-import type { DecodedFrame } from './frame';
 import type { Opcode } from './opcodes';
+import type { FramePredicate, PendingReply } from './replies';
 
-export type FramePredicate = (frame: DecodedFrame) => boolean;
+export type { FramePredicate, PendingReply };
 
 // What multi-step procedures need from a connected session.
 export interface CecBus {
@@ -12,7 +12,7 @@ export interface CecBus {
   readonly deviceType: DeviceType;
   send(dest: LogicalAddress, opcode: Opcode, operands?: number[]): Promise<TxStatus>;
   poll(dest: LogicalAddress, initiator?: LogicalAddress): Promise<TxStatus>;
-  waitFor(predicate: FramePredicate, timeoutMs: number): Promise<DecodedFrame | null>;
+  expectReply(predicate: FramePredicate): PendingReply;
   claimLogicalAddress(la: LogicalAddress): Promise<void>;
   setActiveSource(active: boolean): void;
   note(text: string): void;

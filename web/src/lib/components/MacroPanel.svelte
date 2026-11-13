@@ -24,6 +24,9 @@
 
   let { session }: { session: CecSession } = $props();
 
+  const uid = $props.id();
+  const ids = { input: `${uid}-input`, remoteDest: `${uid}-remote-dest` };
+
   const WAKE_TIMEOUT_MS = 20_000;
   const WAKE_POLL_MS = 1_000;
 
@@ -102,8 +105,8 @@
     </div>
 
     <div class="flex items-center gap-2">
-      <Label>Switch TV input to</Label>
-      <Input class="h-8 w-28 font-mono" bind:value={inputText} />
+      <Label for={ids.input}>Switch TV input to</Label>
+      <Input id={ids.input} class="h-8 w-28 font-mono" bind:value={inputText} />
       <Button size="sm" variant="outline" {disabled} onclick={() => runStep('switch input', () => switchInput(session, parsePhysAddr(inputText)))}>
         Set Stream Path
       </Button>
@@ -111,8 +114,8 @@
 
     <div class="grid gap-3">
       <div class="flex items-center gap-2">
-        <Label>Remote to</Label>
-        <OptionSelect bind:value={remoteDest} options={DESTINATION_OPTIONS} />
+        <Label for={ids.remoteDest}>Remote to</Label>
+        <OptionSelect id={ids.remoteDest} bind:value={remoteDest} options={DESTINATION_OPTIONS} />
       </div>
       <div class="grid w-72 grid-cols-3 gap-2">
         {#each KEYPAD as { key, label } (key)}

@@ -20,7 +20,7 @@ import {
   type Status,
 } from './proto';
 
-const TX_TIMEOUT_MS = TX_BUDGET_MS + 500;
+export const TX_TIMEOUT_MS = TX_BUDGET_MS + 500;
 const SEQ_MODULO = 0x100;
 
 export class DongleError extends Error {}
@@ -41,7 +41,7 @@ export class Dongle {
   private nextSeq = 0;
   private pending: PendingTx | null = null;
   private txChain: Promise<unknown> = Promise.resolve();
-  private closed = false;
+  private stopped: Promise<void> | null = null;
 
   private constructor(
     private readonly device: USBDevice,
@@ -63,6 +63,17 @@ export class Dongle {
 
   static async open(device: USBDevice, listener: DongleListener): Promise<Dongle> {
     await device.open();
+    try {
+      const dongle = await Dongle.attach(device, listener);
+      void dongle.readEvents();
+      return dongle;
+    } catch (err) {
+      await device.close().catch(() => undefined);
+      throw err;
+    }
+  }
+
+  private static async attach(device: USBDevice, listener: DongleListener): Promise<Dongle> {
     if (device.configuration === null) {
       await device.selectConfiguration(1);
     }
@@ -75,23 +86,19 @@ export class Dongle {
       ),
     );
     if (!itf) {
-      await device.close();
       throw new DongleError('no CEC interface on this device');
     }
     await device.claimInterface(itf.interfaceNumber);
     const endpoint = itf.alternate.endpoints.find((e) => e.direction === 'in' && e.type === 'interrupt');
     if (!endpoint) {
-      await device.close();
       throw new DongleError('CEC interface has no event endpoint');
     }
 
     const dongle = new Dongle(device, itf.interfaceNumber, endpoint.endpointNumber, listener);
     const info = await dongle.getInfo();
     if (info.protoMajor !== PROTO_MAJOR) {
-      await device.close();
       throw new DongleError(`protocol ${info.protoMajor}.x, expected ${PROTO_MAJOR}.x`);
     }
-    void dongle.readEvents();
     return dongle;
   }
 
@@ -103,17 +110,18 @@ export class Dongle {
     return device === this.device;
   }
 
-  async close(): Promise<void> {
-    if (this.closed) {
-      return;
-    }
-    this.closed = true;
-    this.failPending('closed');
-    try {
-      await this.setEnable(false);
-    } catch {
-      // unplugged
-    }
+  close(): Promise<void> {
+    return this.shutdown('closed');
+  }
+
+  private shutdown(reason: string): Promise<void> {
+    this.stopped ??= this.release(reason);
+    return this.stopped;
+  }
+
+  private async release(reason: string): Promise<void> {
+    this.failPending(reason);
+    await this.setEnable(false).catch(() => undefined);
     await this.device.close().catch(() => undefined);
   }
 
@@ -163,13 +171,13 @@ export class Dongle {
     });
     const timeout = setTimeout(() => this.failPending('transmit timed out'), TX_TIMEOUT_MS);
     try {
-      await this.controlOut(Request.TRANSMIT, seq, frame);
-      return await done;
-    } catch (err) {
-      this.pending = null;
-      throw err;
+      const [, status] = await Promise.all([this.controlOut(Request.TRANSMIT, seq, frame), done]);
+      return status;
     } finally {
       clearTimeout(timeout);
+      if (this.pending?.seq === seq) {
+        this.pending = null;
+      }
     }
   }
 
@@ -179,14 +187,13 @@ export class Dongle {
   }
 
   private async readEvents(): Promise<void> {
-    while (!this.closed) {
+    while (!this.stopped) {
       let result: USBInTransferResult;
       try {
         result = await this.device.transferIn(this.eventEndpoint, EVENT_PACKET_SIZE);
       } catch (err) {
-        if (!this.closed) {
-          this.closed = true;
-          this.failPending('disconnected');
+        if (!this.stopped) {
+          void this.shutdown('disconnected');
           this.listener.onDisconnect(err instanceof Error ? err.message : String(err));
         }
         return;

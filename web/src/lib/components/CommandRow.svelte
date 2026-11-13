@@ -1,38 +1,26 @@
 <script lang="ts">
   import { Button } from '$lib/components/ui/button';
   import { Input } from '$lib/components/ui/input';
-  import { encodeOperand, formatPhysAddr } from '$lib/cec/frame';
-  import { OperandKind, type OpcodeSpec, type OperandSpec } from '$lib/cec/opcodes';
+  import { OperandKind, type OpcodeSpec } from '$lib/cec/opcodes';
   import type { CecSession } from '$lib/cec/session.svelte';
+  import { CommandDraft } from './command-draft.svelte';
   import OptionSelect from './OptionSelect.svelte';
   import { DESTINATION_OPTIONS } from './options';
 
   let { session, spec }: { session: CecSession; spec: OpcodeSpec } = $props();
 
-  function initialValue(operand: OperandSpec): string {
-    switch (operand.kind) {
-      case OperandKind.ENUM:
-        return String(operand.options[0].value);
-      case OperandKind.PHYS_ADDR:
-        return formatPhysAddr(session.physAddr);
-      case OperandKind.BYTE:
-        return '00';
-      case OperandKind.VENDOR_ID:
-        return '000000';
-      default:
-        return '';
-    }
-  }
-
   // svelte-ignore state_referenced_locally
   let dest = $state(spec.defaultDest);
   // svelte-ignore state_referenced_locally
-  let values = $state(spec.operands.map(initialValue));
+  const draft = new CommandDraft(spec.operands, session.physAddr);
+
+  $effect(() => {
+    draft.followPhysAddr(session.physAddr);
+  });
 
   function send() {
     void session.run(spec.name, async () => {
-      const operands = spec.operands.flatMap((operand, i) => encodeOperand(operand, values[i]));
-      await session.send(dest, spec.opcode, operands);
+      await session.send(dest, spec.opcode, draft.encode());
     });
   }
 </script>
@@ -46,7 +34,7 @@
   {#each spec.operands as operand, i (operand.name)}
     {#if operand.kind === OperandKind.ENUM}
       <OptionSelect
-        bind:value={() => Number(values[i]), (v) => (values[i] = String(v))}
+        bind:value={() => Number(draft.values[i]), (v) => draft.edit(i, String(v))}
         options={operand.options}
       />
     {:else}
@@ -55,7 +43,7 @@
         placeholder={operand.name}
         title={operand.name}
         maxlength={operand.kind === OperandKind.ASCII ? operand.maxLength : undefined}
-        bind:value={values[i]}
+        bind:value={() => draft.values[i], (v) => draft.edit(i, v)}
       />
     {/if}
   {/each}
