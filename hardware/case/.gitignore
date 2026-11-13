@@ -1,0 +1,5 @@
+# Backups
+*.sc.bak
+
+# Lock files
+.~*.sc.lock
