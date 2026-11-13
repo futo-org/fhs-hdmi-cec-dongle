@@ -1,0 +1,36 @@
+# KiKit has to run on the same Python that ships pcbnew, so it lives in a venv built from KiCad's interpreter.
+
+[tools]
+uv = "0.12.13"
+
+[env]
+COLS = "{{ env.COLS | default(value='5') }}"
+KICAD_PYTHON = "{{ env.KICAD_PYTHON | default(value=os() == 'macos' and '/Applications/KiCad/KiCad.app/Contents/Frameworks/Python.framework/Versions/Current/bin/python3' or '/usr/bin/python3') }}"
+KIKIT_VENV = ".venv"
+KIKIT_VERSION = "1.8.1"
+PANEL_DIR = "production/panel"
+
+[tasks.kikit]
+description = "Install KiKit into a venv on KiCad's Python"
+run = [
+  "uv venv --quiet --allow-existing --system-site-packages --python $KICAD_PYTHON $KIKIT_VENV",
+  "uv pip install --quiet --python $KIKIT_VENV kikit==$KIKIT_VERSION",
+]
+
+[tasks.panel-dir]
+hide = true
+run = [
+  "mkdir -p $PANEL_DIR",
+  # 3D models resolve through ${KIPRJMOD}/lib, which is the panel's folder once it opens in KiCad
+  "ln -sfn $PWD/lib $PANEL_DIR/lib",
+]
+
+[tasks.panel]
+description = "Build the 2xCOLS V-cut JLC panel (COLS, default 5)"
+depends = ["kikit", "panel-dir"]
+run = "$KIKIT_VENV/bin/kikit panelize -p :jlcTooling -p :jlcVcuts -p panel.json --layout \"cols: $COLS\" hdmi-cec.kicad_pcb $PANEL_DIR/hdmi-cec-panel.kicad_pcb"
+
+[tasks.panel-mousebites]
+description = "Build the compact 2xCOLS mousebite JLC panel (COLS, default 5)"
+depends = ["kikit", "panel-dir"]
+run = "$KIKIT_VENV/bin/kikit panelize -p :jlcTooling -p panel.json -p panel-mousebites.json --layout \"cols: $COLS\" hdmi-cec.kicad_pcb $PANEL_DIR/hdmi-cec-panel-mousebites.kicad_pcb"

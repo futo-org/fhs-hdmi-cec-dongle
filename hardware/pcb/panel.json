@@ -1,0 +1,36 @@
+{
+    "layout": {
+        "type": "grid",
+        "rows": 2,
+        "cols": 5,
+        // USB-C overhangs the side edge by 1.72mm and would touch the neighbor's female HDMI.
+        "hspace": "3mm",
+        // JLC rejects V-cut panels under 70mm on either side. Two 17mm rows plus this strip makes 70mm.
+        "vspace": "36mm",
+        // Male HDMI faces down on the source board. Rotate the whole grid, then flip every other row back, so both rows point the male plug away from the center.
+        "rotation": "180deg",
+        "alternation": "rows"
+    },
+    "tabs": {
+        "type": "full"
+    },
+    "framing": {
+        "type": "railslr",
+        "width": "5mm",
+        // Same USB-C overhang as between columns, keeps it off the rail's tooling holes.
+        "hspace": "3mm",
+        "vspace": "0mm"
+    },
+    "fiducials": {
+        "type": "3fid",
+        "hoffset": "2.5mm",
+        "voffset": "3.85mm",
+        "coppersize": "1mm",
+        "opening": "2mm"
+    },
+    "tooling": {
+        "hoffset": "2.5mm",
+        "voffset": "8mm",
+        "size": "2mm"
+    }
+}

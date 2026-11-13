@@ -33,3 +33,6 @@ fab/
 production/*
 !production/PROGRAMMING.typ
 !production/images/
+
+# KiKit venv (mise run kikit)
+.venv/
