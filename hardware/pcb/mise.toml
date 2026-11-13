@@ -5,7 +5,7 @@ uv = "0.12.13"
 
 [env]
 COLS = "{{ env.COLS | default(value='5') }}"
-KICAD_PYTHON = "{{ env.KICAD_PYTHON | default(value=os() == 'macos' and '/Applications/KiCad/KiCad.app/Contents/Frameworks/Python.framework/Versions/Current/bin/python3' or '/usr/bin/python3') }}"
+KICAD_PYTHON = "{% if env.KICAD_PYTHON is defined %}{{ env.KICAD_PYTHON }}{% elif os() == 'macos' %}/Applications/KiCad/KiCad.app/Contents/Frameworks/Python.framework/Versions/Current/bin/python3{% else %}/usr/bin/python3{% endif %}"
 KIKIT_VENV = ".venv"
 KIKIT_VERSION = "1.8.1"
 PANEL_DIR = "production/panel"
