@@ -29,8 +29,3 @@ run = [
 description = "Build the 2xCOLS V-cut JLC panel (COLS, default 5)"
 depends = ["kikit", "panel-dir"]
 run = "$KIKIT_VENV/bin/kikit panelize -p :jlcTooling -p :jlcVcuts -p panel.json --layout \"cols: $COLS\" hdmi-cec.kicad_pcb $PANEL_DIR/hdmi-cec-panel.kicad_pcb"
-
-[tasks.panel-mousebites]
-description = "Build the compact 2xCOLS mousebite JLC panel (COLS, default 5)"
-depends = ["kikit", "panel-dir"]
-run = "$KIKIT_VENV/bin/kikit panelize -p :jlcTooling -p panel.json -p panel-mousebites.json --layout \"cols: $COLS\" hdmi-cec.kicad_pcb $PANEL_DIR/hdmi-cec-panel-mousebites.kicad_pcb"
