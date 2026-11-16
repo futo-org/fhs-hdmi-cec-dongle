@@ -79,7 +79,18 @@
     </Card.Description>
     <Card.Action>
       {#if session.connected}
-        <Button variant="outline" onclick={() => session.disconnect()}>Disconnect</Button>
+        <div class="flex gap-2">
+          {#if session.hasDfu}
+            <Button
+              variant="outline"
+              disabled={!!session.busy}
+              onclick={() => session.run('enter DFU', () => session.enterDfu())}
+            >
+              Enter DFU
+            </Button>
+          {/if}
+          <Button variant="outline" onclick={() => session.disconnect()}>Disconnect</Button>
+        </div>
       {:else}
         <Button disabled={!session.supported} onclick={() => session.connect()}>Connect</Button>
       {/if}

@@ -72,6 +72,10 @@ export class CecSession implements CecBus {
     return ((this.info?.caps ?? 0) & Cap.EDID) !== 0;
   }
 
+  get hasDfu(): boolean {
+    return ((this.info?.caps ?? 0) & Cap.DFU) !== 0;
+  }
+
   constructor() {
     if (this.supported) {
       navigator.usb.addEventListener('disconnect', (e) => {
@@ -114,6 +118,11 @@ export class CecSession implements CecBus {
   async disconnect(): Promise<void> {
     await this.dongle?.close();
     this.dropConnection('closed');
+  }
+
+  async enterDfu(): Promise<void> {
+    await this.requireDongle().enterDfu();
+    this.dropConnection('rebooted into the DFU bootloader');
   }
 
   async readEdid(): Promise<void> {

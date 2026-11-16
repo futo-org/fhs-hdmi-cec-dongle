@@ -114,6 +114,16 @@ export class Dongle {
     return this.shutdown('closed');
   }
 
+  // The device resets after acknowledging, so this stops the event reader first
+  // and the reset is not reported as a disconnect.
+  enterDfu(): Promise<void> {
+    this.failPending('entering DFU');
+    this.stopped ??= this.controlOut(Request.ENTER_DFU, 0).finally(() =>
+      this.device.close().catch(() => undefined),
+    );
+    return this.stopped;
+  }
+
   private shutdown(reason: string): Promise<void> {
     this.stopped ??= this.release(reason);
     return this.stopped;

@@ -78,6 +78,29 @@ describe('Dongle', () => {
     expect(device.close).toHaveBeenCalled();
   });
 
+  it('enters DFU without reporting the reset as a disconnect', async () => {
+    const device = fakeDevice();
+    let resetDevice: (err: Error) => void = () => undefined;
+    device.transferIn.mockReturnValueOnce(
+      new Promise((_, reject) => {
+        resetDevice = reject;
+      }),
+    );
+    const l = listener();
+    const dongle = await open(device, l);
+
+    await dongle.enterDfu();
+    resetDevice(new Error('device reset'));
+    await new Promise((resolve) => setTimeout(resolve));
+
+    expect(device.controlTransferOut).toHaveBeenCalledWith(
+      expect.objectContaining({ request: Request.ENTER_DFU }),
+      undefined,
+    );
+    expect(device.close).toHaveBeenCalledOnce();
+    expect(l.onDisconnect).not.toHaveBeenCalled();
+  });
+
   it('releases the device once when the event read fails', async () => {
     const device = fakeDevice();
     device.transferIn.mockRejectedValueOnce(new Error('babble'));
