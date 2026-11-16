@@ -121,7 +121,12 @@ export class CecSession implements CecBus {
   }
 
   async enterDfu(): Promise<void> {
-    await this.requireDongle().enterDfu();
+    try {
+      await this.requireDongle().enterDfu();
+    } catch (err) {
+      this.dropConnection('DFU entry failed');
+      throw err;
+    }
     this.dropConnection('rebooted into the DFU bootloader');
   }
 
