@@ -10,9 +10,8 @@
         // Male HDMI faces down on the source board. Rotate the whole grid, then flip every other row back, so both rows point the male plug away from the center.
         "rotation": "180deg",
         "alternation": "rows",
-        // JLC matches BOM to CPL by designator, so each board's parts need their own. The silkscreen keeps the original.
-        "renameref": "{orig}_{n}",
-        "bakeref": true
+        // JLC matches BOM to CPL by designator, so each board's parts need their own.
+        "renameref": "{orig}_{n}"
     },
     "tabs": {
         "type": "full"
