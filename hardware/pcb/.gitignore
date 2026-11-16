@@ -30,4 +30,6 @@ fab/
 *.ses
 
 # Production outputs (built in CI)
-production/
+production/*
+!production/PROGRAMMING.md
+!production/images/
