@@ -2,9 +2,9 @@ name: hardware
 
 on:
   push:
-    paths: ["hardware/pcb/**", ".github/workflows/hardware.yml"]
+    paths: ["hardware/pcb/**", "firmware/**", ".github/workflows/hardware.yml"]
   pull_request:
-    paths: ["hardware/pcb/**", ".github/workflows/hardware.yml"]
+    paths: ["hardware/pcb/**", "firmware/**", ".github/workflows/hardware.yml"]
 
 env:
   BOARD: hdmi-cec.kicad_pcb
@@ -93,3 +93,34 @@ jobs:
         with:
           name: hdmi-cec-step
           path: hardware/pcb/${{ env.STEP }}
+
+  programming:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: firmware
+    env:
+      PRESET: Release
+      ELF: build/Release/fhs-hdmi-controller.elf
+      FIRMWARE: fhs-cec-firmware
+      PKG: ${{ github.workspace }}/programming
+      DOCS: ${{ github.workspace }}/hardware/pcb/production
+      TYPST: 0.15.1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jdx/mise-action@v2
+        with:
+          working_directory: firmware
+          install_args: cmake ninja gcc-arm-none-eabi
+      - name: Build firmware
+        run: mise run build
+      - name: Package
+        run: |
+          mkdir -p "$PKG"
+          mise x "typst@$TYPST" -- typst compile --ignore-system-fonts "$DOCS/PROGRAMMING.typ" "$PKG/PROGRAMMING.pdf"
+          arm-none-eabi-objcopy -O ihex "$ELF" "$PKG/$FIRMWARE.hex"
+          arm-none-eabi-objcopy -O binary "$ELF" "$PKG/$FIRMWARE.bin"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fhs-cec-programming
+          path: ${{ env.PKG }}/
