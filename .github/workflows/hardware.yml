@@ -96,7 +96,25 @@ jobs:
           name: hdmi-cec-step
           path: hardware/pcb/${{ env.STEP }}
 
+  changes:
+    if: github.event_name != 'release'
+    runs-on: ubuntu-latest
+    outputs:
+      programming: ${{ steps.filter.outputs.programming }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            programming:
+              - firmware/**
+              - hardware/pcb/production/PROGRAMMING.typ
+              - .github/workflows/hardware.yml
+
   programming:
+    needs: changes
+    if: ${{ !cancelled() && (github.event_name == 'release' || needs.changes.outputs.programming == 'true') }}
     runs-on: ubuntu-latest
     defaults:
       run:
