@@ -5,6 +5,8 @@ on:
     paths: ["hardware/pcb/**", "firmware/**", ".github/workflows/hardware.yml"]
   pull_request:
     paths: ["hardware/pcb/**", "firmware/**", ".github/workflows/hardware.yml"]
+  release:
+    types: [published]
 
 env:
   BOARD: hdmi-cec.kicad_pcb
@@ -124,3 +126,25 @@ jobs:
         with:
           name: fhs-cec-programming
           path: ${{ env.PKG }}/
+
+  release:
+    if: github.event_name == 'release'
+    needs: [drc, production, programming]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: ${{ github.event.release.tag_name }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Upload to release
+        working-directory: artifacts
+        run: |
+          for dir in */; do
+            name="${dir%/}"
+            (cd "$name" && zip -qr "../$name-$TAG.zip" .)
+          done
+          gh release upload "$TAG" *.zip --clobber --repo "$GITHUB_REPOSITORY"
