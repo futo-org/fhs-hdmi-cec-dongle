@@ -31,7 +31,6 @@ jobs:
         run: |
           mkdir -p "$PKG"
           mise x "typst@$TYPST" -- typst compile --ignore-system-fonts "$DOCS/PROGRAMMING.typ" "$PKG/PROGRAMMING.pdf"
-          cp -r "$DOCS/images" "$PKG/"
           arm-none-eabi-objcopy -O ihex "$ELF" "$PKG/$FIRMWARE.hex"
           arm-none-eabi-objcopy -O binary "$ELF" "$PKG/$FIRMWARE.bin"
       - uses: actions/upload-artifact@v4

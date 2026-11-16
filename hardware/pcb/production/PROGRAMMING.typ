@@ -19,7 +19,6 @@ Programming over USB, after assembly. No debug probe needed.
   [*Interface*], [USB-C connector (J3), STM32 ROM USB DFU bootloader],
   [*Boot mode*], [Short jumper JP1 while plugging in USB],
   [*Firmware file*], [`fhs-cec-firmware.hex` (also `fhs-cec-firmware.bin`, start address `0x08000000`)],
-  [*Board photos*], [`images/`],
 )
 
 == Equipment
