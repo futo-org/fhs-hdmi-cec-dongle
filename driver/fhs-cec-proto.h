@@ -27,7 +27,7 @@
 
 /* The driver refuses a device with a different major. */
 #define FHS_CEC_PROTO_MAJOR 1
-#define FHS_CEC_PROTO_MINOR 1
+#define FHS_CEC_PROTO_MINOR 2
 
 /* Header + opcode + up to 14 operands. */
 #define FHS_CEC_FRAME_MAX 16
@@ -69,11 +69,17 @@ enum fhs_cec_request {
 	   display over DDC. Stalls if the display does not answer. Only with
 	   FHS_CEC_CAP_EDID. */
 	FHS_CEC_REQ_GET_EDID = 0x08,
+	/* No data. The device acknowledges, then resets into the ROM USB DFU
+	   bootloader. Answered whatever the recipient, so a host tool can send
+	   it to the device while the driver holds the interface. Only with
+	   FHS_CEC_CAP_DFU. */
+	FHS_CEC_REQ_ENTER_DFU = 0x09,
 };
 
 enum fhs_cec_cap {
 	FHS_CEC_CAP_MONITOR_ALL = 1u << 0,
 	FHS_CEC_CAP_EDID = 1u << 1,
+	FHS_CEC_CAP_DFU = 1u << 2,
 };
 
 enum fhs_cec_event_type {

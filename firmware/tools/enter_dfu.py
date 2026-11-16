@@ -1,19 +1,27 @@
 #!/usr/bin/env python3
-"""Send `dfu` to the dongle's debug console so it reboots into the ROM bootloader.
+"""Reboot the dongle into the ROM USB DFU bootloader with the ENTER_DFU vendor request.
 
-    enter_dfu.py [port|hwgrep://<regexp>] [baud]
+    enter_dfu.py
 """
 
 import sys
 
-import serial
+import libusb_package
+import usb.core
+import usb.util
 
-port = sys.argv[1] if len(sys.argv) > 1 else "hwgrep://3a4c:4663"
-baud = int(sys.argv[2]) if len(sys.argv) > 2 else 115200
+# driver/fhs-cec-proto.h
+USB_VID = 0x3A4C
+USB_PID = 0x4663
+REQ_ENTER_DFU = 0x09
+
+VENDOR_OUT_TO_DEVICE = usb.util.CTRL_OUT | usb.util.CTRL_TYPE_VENDOR | usb.util.CTRL_RECIPIENT_DEVICE
+
+dev = libusb_package.find(idVendor=USB_VID, idProduct=USB_PID)
+if dev is None:
+    sys.exit("no dongle on USB: bridge the DFU jumper and replug instead")
 
 try:
-    with serial.serial_for_url(port, baud, timeout=1) as s:
-        s.write(b"\r\ndfu\r\n")
-        s.flush()
-except (serial.SerialException, OSError) as e:
-    sys.exit("no debug console ({}): bridge the DFU jumper and replug instead".format(e))
+    dev.ctrl_transfer(VENDOR_OUT_TO_DEVICE, REQ_ENTER_DFU)
+except usb.core.USBError as e:
+    sys.exit("ENTER_DFU failed ({}): firmware too old? bridge the DFU jumper and replug".format(e))

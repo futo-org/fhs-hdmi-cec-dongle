@@ -14,6 +14,8 @@ EDID = "{{ env.EDID | default(value='ON') }}"
 CHIP = "STM32F072CB"
 BAUD = "{{ env.BAUD | default(value='115200') }}"
 PYSERIAL = "uv run --quiet --with pyserial==3.5"
+# libusb-package bundles libusb, so no system install.
+PYUSB = "uv run --quiet --with pyusb==1.3.1 --with libusb-package==1.0.30.1"
 # USB CDC debug console (Debug preset), found by USB VID:PID instead of a fixed
 # device node, so the same task works on Linux (/dev/ttyACM*), macOS
 # (/dev/cu.usbmodem*) and Windows (COM*). VID:PID from driver/fhs-cec-proto.h.
@@ -43,15 +45,15 @@ run = ["probe-rs list", "probe-rs read --chip $CHIP b32 0x40015800 1"]
 
 # dfu-util is not mise-managed: brew install dfu-util / apt install dfu-util
 [tasks.dfu]
-description = "Reboot a running Debug build into the ROM DFU bootloader"
-run = "$PYSERIAL tools/enter_dfu.py $SERIAL_PORT $BAUD"
+description = "Reboot the running firmware into the ROM DFU bootloader"
+run = "$PYUSB tools/enter_dfu.py"
 
 [tasks.flash]
-description = "Build, flash over USB DFU (no probe, no jumper on a running Debug build)"
+description = "Build, flash over USB DFU (no probe, no jumper on running firmware)"
 depends = ["build"]
 run = [
     "arm-none-eabi-objcopy -O binary $ELF $BIN",
-    "$PYSERIAL tools/enter_dfu.py $SERIAL_PORT $BAUD || echo 'waiting for a DFU device'",
+    "$PYUSB tools/enter_dfu.py || echo 'waiting for a DFU device'",
     "dfu-util -w -d $DFU_DEVICE -a 0 -s $FLASH_BASE:leave -D $BIN",
 ]
 

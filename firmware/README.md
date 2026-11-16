@@ -16,6 +16,7 @@ The wire protocol is `../driver/fhs-cec-proto.h`, included by both sides.
     mise install            # one-time: fetch the pinned toolchain
     mise run build          # configure + build (Debug preset)
     mise run load           # build, flash over SWD, reset
+    mise run flash          # build, flash over USB DFU
     mise run monitor        # debug console over USB (Debug builds only)
     mise tasks              # full list
 
@@ -24,6 +25,10 @@ The wire protocol is `../driver/fhs-cec-proto.h`, included by both sides.
 
 Flashing is SWD (`SWDIO`/`SWCLK`/`NRST` test points) with an ST-LINK and `probe-rs`, chip
 `STM32F072CB`. The `DFU` jumper (BOOT0) starts the ROM USB DFU bootloader instead.
+
+`mise run flash` needs no probe and no jumper: it sends the `ENTER_DFU` vendor request, the
+running firmware (Debug or Release) resets into the ROM bootloader, and `dfu-util` writes the
+image. A blank chip has no firmware to answer, so it needs the jumper.
 
 On Linux the ST-LINK needs the udev rule once:
 

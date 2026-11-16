@@ -26,11 +26,13 @@ export enum Request {
   SET_PHYS_ADDR = 0x06,
   GET_STATUS = 0x07,
   GET_EDID = 0x08,
+  ENTER_DFU = 0x09,
 }
 
 export enum Cap {
   MONITOR_ALL = 1 << 0,
   EDID = 1 << 1,
+  DFU = 1 << 2,
 }
 
 export enum EventType {

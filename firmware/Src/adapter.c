@@ -1,4 +1,5 @@
 #include "adapter.h"
+#include "bootloader.h"
 #include "cec.h"
 #include "cec_log.h"
 #include "led.h"
@@ -253,7 +254,7 @@ static void fill_info(void)
     info.fw_patch = FW_VERSION_PATCH;
     info.reserved = 0;
     info.phys_addr = settings_phys_addr();
-    info.caps = FHS_CEC_CAP_MONITOR_ALL;
+    info.caps = FHS_CEC_CAP_MONITOR_ALL | FHS_CEC_CAP_DFU;
 #if FHS_CEC_EDID
     info.caps |= FHS_CEC_CAP_EDID;
 #endif
@@ -319,6 +320,10 @@ static bool setup(uint8_t rhport, tusb_control_request_t const *req)
         TU_VERIFY(req->wLength >= 1U && req->wLength <= CEC_FRAME_MAX);
         return tud_control_xfer(rhport, req, host_frame, req->wLength);
 
+    case FHS_CEC_REQ_ENTER_DFU:
+        TU_VERIFY(direction_is(req, TUSB_DIR_OUT) && req->wLength == 0U);
+        return tud_control_status(rhport, req);
+
 #if FHS_CEC_EDID
     /* Blocks the main loop for the read. The driver asks at probe, before
        the adapter is enabled. */
@@ -345,6 +350,10 @@ bool adapter_control(uint8_t rhport, uint8_t stage, tusb_control_request_t const
     if (stage == CONTROL_STAGE_DATA && req->bRequest == FHS_CEC_REQ_TRANSMIT) {
         TU_VERIFY(tud_control_xferred_len() == req->wLength);
         start_host_transmit((uint8_t)req->wValue, (uint8_t)req->wLength);
+    }
+    /* After the status stage, so the host sees the request succeed. */
+    if (stage == CONTROL_STAGE_ACK && req->bRequest == FHS_CEC_REQ_ENTER_DFU) {
+        bootloader_enter();
     }
     return true;
 }
