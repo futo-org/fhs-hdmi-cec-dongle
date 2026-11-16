@@ -14818,6 +14818,7 @@
 		(property "Footprint" "Package_TO_SOT_SMD:SOT-553" (at 363.22 127 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27))))
 		(property "Datasheet" "https://www.ti.com/lit/ds/symlink/sn74lvc1g17.pdf" (at 365.76 133.35 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27))))
 		(property "Description" "Single Schmitt Buffer Gate, Low-Voltage CMOS" (at 365.76 127 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27))))
+		(property "LCSC" "C2652096" (at 365.76 127 0) (hide yes) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27))))
 		(pin "1" (uuid "3d63e96a-6b7e-41d7-ada2-a64b49c05fc9")) (pin "2" (uuid "5aeefa60-4907-482b-a2c4-c5553d70ec78"))
 		(pin "3" (uuid "163e8625-d7f9-41d1-bf94-316ee28c7297")) (pin "4" (uuid "c9ae6739-97e1-4e0b-a3f2-a0d307733907"))
 		(pin "5" (uuid "3890de52-7e2a-4faf-b42d-3d261ee5ffb4"))
