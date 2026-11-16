@@ -14,21 +14,28 @@ void bootloader_enter(void)
     NVIC_SystemReset();
 }
 
+/* Runs before RAM is initialised, so it touches no variables. The ROM's DFU
+   "leave" jumps to us with its own memory still mapped at address 0, so our
+   interrupts would land in ROM handlers. */
+void bootloader_map_flash(void)
+{
+    __HAL_RCC_SYSCFG_CLK_ENABLE();
+    __HAL_SYSCFG_REMAPMEMORY_FLASH();
+}
+
 void bootloader_check(void)
 {
     const uint32_t *vectors = (const uint32_t *)SYSTEM_MEMORY_BASE;
     void (*rom_reset)(void);
 
-    /* The ROM's DFU "leave" jumps here with its own memory still mapped at
-       address 0, so our interrupts would land in ROM handlers. */
-    __HAL_RCC_SYSCFG_CLK_ENABLE();
-    __HAL_SYSCFG_REMAPMEMORY_FLASH();
+    __enable_irq();
 
     if (dfu_request != DFU_REQUEST_MAGIC) {
         return;
     }
     dfu_request = 0;
 
+    __HAL_RCC_SYSCFG_CLK_ENABLE();
     __HAL_SYSCFG_REMAPMEMORY_SYSTEMFLASH();
 
     rom_reset = (void (*)(void))vectors[1];

@@ -53,8 +53,10 @@ defined in linker script */
   .weak Reset_Handler
   .type Reset_Handler, %function
 Reset_Handler:
+  cpsid i               /* unmasked again in bootloader_check */
   ldr   r0, =_estack
   mov   sp, r0          /* set stack pointer */
+  bl  bootloader_map_flash
 /* Call the clock system initialization function.*/
   bl  SystemInit
 
