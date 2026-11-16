@@ -9,8 +9,10 @@ on:
 env:
   BOARD: hdmi-cec.kicad_pcb
   SCHEMATIC: hdmi-cec.kicad_sch
-  OUT: production
-  PANELS: production/panel/hdmi-cec-panel.kicad_pcb production/panel/hdmi-cec-panel-mousebites.kicad_pcb
+  PANEL: production/panel/hdmi-cec-panel.kicad_pcb
+  OUT: production/hdmi-cec
+  PANEL_OUT: production/hdmi-cec-panel
+  STEP: production/hdmi-cec.step
   GERBER_LAYERS: F.Cu,In1.Cu,In2.Cu,B.Cu,F.Paste,B.Paste,F.Silkscreen,B.Silkscreen,F.Mask,B.Mask,Edge.Cuts
 
 jobs:
@@ -46,49 +48,42 @@ jobs:
         working-directory: hardware/pcb
     steps:
       - uses: actions/checkout@v4
-      - name: Gerbers
-        run: kicad-cli pcb export gerbers --check-zones --layers "$GERBER_LAYERS" -o "$OUT/gerbers/" "$BOARD"
-      - name: Drill
-        run: kicad-cli pcb export drill --excellon-separate-th -o "$OUT/gerbers/" "$BOARD"
       - name: Install curl for mise
         run: apt-get update -qq && apt-get install -y -qq curl
       - uses: jdx/mise-action@v2
         with:
           install: false
       - name: Panel
-        run: mise trust && mise install && mise run panel && mise run panel-mousebites
-      - name: Panel gerbers
+        run: mise trust && mise install && mise run panel
+      - name: Gerbers
         run: |
-          for board in $PANELS; do
-            name=$(basename "$board" .kicad_pcb)
-            kicad-cli pcb export gerbers --check-zones --layers "$GERBER_LAYERS" -o "$OUT/panel/$name/" "$board"
-            kicad-cli pcb export drill --excellon-separate-th -o "$OUT/panel/$name/" "$board"
-          done
+          kicad-cli pcb export gerbers --check-zones --layers "$GERBER_LAYERS" -o "$OUT/gerbers/" "$BOARD"
+          kicad-cli pcb export drill --excellon-separate-th -o "$OUT/gerbers/" "$BOARD"
+          kicad-cli pcb export gerbers --check-zones --layers "$GERBER_LAYERS" -o "$PANEL_OUT/gerbers/" "$PANEL"
+          kicad-cli pcb export drill --excellon-separate-th -o "$PANEL_OUT/gerbers/" "$PANEL"
       - name: STEP
-        run: kicad-cli pcb export step --subst-models -o "$OUT/hdmi-cec.step" "$BOARD"
+        run: kicad-cli pcb export step --subst-models -o "$STEP" "$BOARD"
       - name: BOM and CPL
         run: |
-          mkdir -p "$OUT/assembly"
           kicad-cli sch export bom --exclude-dnp --group-by '' --field-delimiter '|' --string-delimiter '' \
             --fields 'Reference,Value,${FOOTPRINT_NAME},LCSC' -o "$RUNNER_TEMP/parts.txt" "$SCHEMATIC"
-          for board in "$BOARD" $PANELS; do
-            name=$(basename "$board" .kicad_pcb)
-            kicad-cli pcb export pos --exclude-dnp --format csv --units mm --side both -o "$RUNNER_TEMP/$name-pos.csv" "$board"
-            awk -F, -v bom="$OUT/assembly/$name-bom.csv" -f jlc-assembly.awk \
-              "$RUNNER_TEMP/parts.txt" "$RUNNER_TEMP/$name-pos.csv" > "$OUT/assembly/$name-cpl.csv"
-          done
+          assembly() {
+            name=$(basename "$1" .kicad_pcb)
+            mkdir -p "$2/assembly"
+            kicad-cli pcb export pos --exclude-dnp --format csv --units mm --side both -o "$RUNNER_TEMP/$name-pos.csv" "$1"
+            awk -F, -v bom="$2/assembly/$name-bom.csv" -f jlc-assembly.awk \
+              "$RUNNER_TEMP/parts.txt" "$RUNNER_TEMP/$name-pos.csv" > "$2/assembly/$name-cpl.csv"
+          }
+          assembly "$BOARD" "$OUT"
+          assembly "$PANEL" "$PANEL_OUT"
       - uses: actions/upload-artifact@v4
         with:
           name: hdmi-cec-production
           path: hardware/pcb/${{ env.OUT }}/
       - uses: actions/upload-artifact@v4
         with:
-          name: hdmi-cec-panel-gerbers
-          path: hardware/pcb/production/panel/hdmi-cec-panel/
-      - uses: actions/upload-artifact@v4
-        with:
-          name: hdmi-cec-panel-mousebites-gerbers
-          path: hardware/pcb/production/panel/hdmi-cec-panel-mousebites/
+          name: hdmi-cec-panel-production
+          path: hardware/pcb/${{ env.PANEL_OUT }}/
       - uses: actions/upload-artifact@v4
         with:
           name: hdmi-cec-step
