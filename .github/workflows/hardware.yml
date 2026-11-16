@@ -9,7 +9,8 @@ on:
 env:
   BOARD: hdmi-cec.kicad_pcb
   SCHEMATIC: hdmi-cec.kicad_sch
-  OUT: production
+  OUT: production/hdmi-cec
+  STEP: production/hdmi-cec.step
   GERBER_LAYERS: F.Cu,In1.Cu,In2.Cu,B.Cu,F.Paste,B.Paste,F.Silkscreen,B.Silkscreen,F.Mask,B.Mask,Edge.Cuts
 
 jobs:
@@ -50,7 +51,7 @@ jobs:
       - name: Drill
         run: kicad-cli pcb export drill --excellon-separate-th -o "$OUT/gerbers/" "$BOARD"
       - name: STEP
-        run: kicad-cli pcb export step --subst-models -o "$OUT/hdmi-cec.step" "$BOARD"
+        run: kicad-cli pcb export step --subst-models -o "$STEP" "$BOARD"
       - name: BOM
         run: |
           mkdir -p "$OUT/assembly"
@@ -71,13 +72,9 @@ jobs:
             "$RUNNER_TEMP/refs.csv" "$RUNNER_TEMP/pos.csv" > "$OUT/assembly/hdmi-cec-cpl.csv"
       - uses: actions/upload-artifact@v4
         with:
-          name: hdmi-cec-assembly
-          path: hardware/pcb/production/assembly/
-      - uses: actions/upload-artifact@v4
-        with:
-          name: hdmi-cec-gerbers
-          path: hardware/pcb/production/gerbers/
+          name: hdmi-cec-production
+          path: hardware/pcb/${{ env.OUT }}/
       - uses: actions/upload-artifact@v4
         with:
           name: hdmi-cec-step
-          path: hardware/pcb/production/hdmi-cec.step
+          path: hardware/pcb/${{ env.STEP }}
