@@ -10,6 +10,8 @@ env:
   ELF: build/Release/fhs-hdmi-controller.elf
   FIRMWARE: fhs-cec-firmware
   PKG: ${{ github.workspace }}/programming
+  DOCS: ${{ github.workspace }}/hardware/pcb/production
+  TYPST: 0.15.1
 
 jobs:
   package:
@@ -28,7 +30,8 @@ jobs:
       - name: Package
         run: |
           mkdir -p "$PKG"
-          cp -r ../hardware/pcb/production/PROGRAMMING.md ../hardware/pcb/production/images "$PKG/"
+          mise x "typst@$TYPST" -- typst compile --ignore-system-fonts "$DOCS/PROGRAMMING.typ" "$PKG/PROGRAMMING.pdf"
+          cp -r "$DOCS/images" "$PKG/"
           arm-none-eabi-objcopy -O ihex "$ELF" "$PKG/$FIRMWARE.hex"
           arm-none-eabi-objcopy -O binary "$ELF" "$PKG/$FIRMWARE.bin"
       - uses: actions/upload-artifact@v4

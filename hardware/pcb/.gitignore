@@ -31,5 +31,5 @@ fab/
 
 # Production outputs (built in CI)
 production/*
-!production/PROGRAMMING.md
+!production/PROGRAMMING.typ
 !production/images/
