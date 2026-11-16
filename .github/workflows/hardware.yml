@@ -57,10 +57,15 @@ jobs:
         run: mise trust && mise install && mise run panel
       - name: Gerbers
         run: |
-          kicad-cli pcb export gerbers --check-zones --layers "$GERBER_LAYERS" -o "$OUT/gerbers/" "$BOARD"
-          kicad-cli pcb export drill --excellon-separate-th -o "$OUT/gerbers/" "$BOARD"
-          kicad-cli pcb export gerbers --check-zones --layers "$GERBER_LAYERS" -o "$PANEL_OUT/gerbers/" "$PANEL"
-          kicad-cli pcb export drill --excellon-separate-th -o "$PANEL_OUT/gerbers/" "$PANEL"
+          gerbers() {
+            name=$(basename "$1" .kicad_pcb)
+            kicad-cli pcb export gerbers --check-zones --layers "$GERBER_LAYERS" -o "$2/gerbers/" "$1"
+            kicad-cli pcb export drill --excellon-separate-th -o "$2/gerbers/" "$1"
+            (cd "$2/gerbers" && python3 -m zipfile -c "../$name-gerbers.zip" *)
+            rm -r "$2/gerbers"
+          }
+          gerbers "$BOARD" "$OUT"
+          gerbers "$PANEL" "$PANEL_OUT"
       - name: STEP
         run: kicad-cli pcb export step --subst-models -o "$STEP" "$BOARD"
       - name: BOM and CPL
