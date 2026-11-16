@@ -50,6 +50,10 @@ jobs:
         run: kicad-cli pcb export gerbers --check-zones --layers "$GERBER_LAYERS" -o "$OUT/gerbers/" "$BOARD"
       - name: Drill
         run: kicad-cli pcb export drill --excellon-separate-th -o "$OUT/gerbers/" "$BOARD"
+      - name: Zip gerbers
+        run: |
+          (cd "$OUT/gerbers" && python3 -m zipfile -c ../hdmi-cec-gerbers.zip *)
+          rm -r "$OUT/gerbers"
       - name: STEP
         run: kicad-cli pcb export step --subst-models -o "$STEP" "$BOARD"
       - name: BOM
