@@ -7,6 +7,20 @@ on:
     paths: ["hardware/pcb/**", "firmware/**", ".github/workflows/hardware.yml"]
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      drc:
+        description: Run DRC
+        type: boolean
+        default: true
+      production:
+        description: Build PCB production files
+        type: boolean
+        default: true
+      programming:
+        description: Build programming package
+        type: boolean
+        default: true
 
 env:
   BOARD: hdmi-cec.kicad_pcb
@@ -19,6 +33,7 @@ env:
 
 jobs:
   drc:
+    if: github.event_name != 'workflow_dispatch' || inputs.drc
     runs-on: ubuntu-latest
     container:
       image: kicad/kicad:10.0-full
@@ -41,6 +56,7 @@ jobs:
         run: cat "$RUNNER_TEMP/drc.rpt"
 
   production:
+    if: github.event_name != 'workflow_dispatch' || inputs.production
     runs-on: ubuntu-latest
     container:
       image: kicad/kicad:10.0-full
@@ -97,7 +113,7 @@ jobs:
           path: hardware/pcb/${{ env.STEP }}
 
   changes:
-    if: github.event_name != 'release'
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -117,7 +133,12 @@ jobs:
 
   programming:
     needs: changes
-    if: ${{ !cancelled() && (github.event_name == 'release' || needs.changes.outputs.programming == 'true') }}
+    if: >-
+      ${{ !cancelled() && (
+        github.event_name == 'release' ||
+        (github.event_name == 'workflow_dispatch' && inputs.programming) ||
+        needs.changes.outputs.programming == 'true'
+      ) }}
     runs-on: ubuntu-latest
     defaults:
       run:
