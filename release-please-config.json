@@ -3,6 +3,9 @@
   "release-type": "simple",
   "include-component-in-tag": true,
   "separate-pull-requests": true,
+  "always-update": true,
+  "draft": true,
+  "force-tag-creation": true,
   "packages": {
     "hardware": {
       "component": "hardware",

@@ -6,6 +6,11 @@ on:
   pull_request:
     paths: ["driver/**", ".github/workflows/driver.yml"]
   workflow_call:
+    inputs:
+      ref:
+        description: Git ref to build, such as a release tag
+        type: string
+        default: ""
 
 jobs:
   build:
@@ -42,6 +47,8 @@ jobs:
             kdir: /usr/lib/modules/*/build
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
       - name: Install kernel headers
         run: ${{ matrix.install }}
       - name: Build (warnings are errors)
@@ -58,6 +65,8 @@ jobs:
     container: debian:bookworm
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
       - name: Install dkms and headers
         run: apt-get update -qq && apt-get install -y -qq build-essential dkms kmod linux-headers-amd64
       - name: dkms build from the release tarball

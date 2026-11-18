@@ -2,10 +2,15 @@ name: firmware
 
 on:
   push:
-    paths: ["firmware/**", ".github/workflows/firmware.yml"]
+    paths: ["firmware/**", "driver/fhs-cec-proto.h", ".github/workflows/firmware.yml"]
   pull_request:
-    paths: ["firmware/**", ".github/workflows/firmware.yml"]
+    paths: ["firmware/**", "driver/fhs-cec-proto.h", ".github/workflows/firmware.yml"]
   workflow_call:
+    inputs:
+      ref:
+        description: Git ref to build, such as a release tag
+        type: string
+        default: ""
 
 jobs:
   build:
@@ -20,6 +25,8 @@ jobs:
       OUT: ${{ github.workspace }}/firmware-out
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
       - uses: jdx/mise-action@v2
         with:
           working_directory: firmware

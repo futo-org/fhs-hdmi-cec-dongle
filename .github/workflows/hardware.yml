@@ -7,10 +7,10 @@ on:
     paths: ["hardware/pcb/**", "firmware/**", ".github/workflows/hardware.yml"]
   workflow_call:
     inputs:
-      release:
-        description: Build everything a hardware release ships
-        type: boolean
-        default: false
+      ref:
+        description: Git ref to build everything a hardware release ships from, such as a release tag
+        type: string
+        default: ""
   workflow_dispatch:
     inputs:
       drc:
@@ -37,7 +37,7 @@ env:
 
 jobs:
   drc:
-    if: github.event_name != 'workflow_dispatch' || inputs.drc
+    if: inputs.ref != '' || github.event_name != 'workflow_dispatch' || inputs.drc
     runs-on: ubuntu-latest
     container:
       image: kicad/kicad:10.0-full
@@ -49,6 +49,8 @@ jobs:
       KICAD_CONFIG_HOME: /tmp/kicad
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
       - name: Install stock footprint libs
         run: |
           mkdir -p "$KICAD_CONFIG_HOME/10.0"
@@ -60,7 +62,7 @@ jobs:
         run: cat "$RUNNER_TEMP/drc.rpt"
 
   production:
-    if: github.event_name != 'workflow_dispatch' || inputs.production
+    if: inputs.ref != '' || github.event_name != 'workflow_dispatch' || inputs.production
     runs-on: ubuntu-latest
     container:
       image: kicad/kicad:10.0-full
@@ -70,6 +72,8 @@ jobs:
         working-directory: hardware/pcb
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
       - name: Install curl for mise
         run: apt-get update -qq && apt-get install -y -qq curl
       - uses: jdx/mise-action@v2
@@ -139,7 +143,7 @@ jobs:
     needs: changes
     if: >-
       ${{ !cancelled() && (
-        inputs.release ||
+        inputs.ref != '' ||
         (github.event_name == 'workflow_dispatch' && inputs.programming) ||
         needs.changes.outputs.programming == 'true'
       ) }}
@@ -156,6 +160,8 @@ jobs:
       TYPST: 0.15.1
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
       - uses: jdx/mise-action@v2
         with:
           working_directory: firmware
