@@ -1,0 +1,24 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "release-type": "simple",
+  "include-component-in-tag": true,
+  "separate-pull-requests": true,
+  "always-update": true,
+  "draft": true,
+  "force-tag-creation": true,
+  "packages": {
+    "hardware": {
+      "component": "hardware",
+      "initial-version": "0.3.0"
+    },
+    "firmware": {
+      "component": "firmware",
+      "initial-version": "0.1.0"
+    },
+    "driver": {
+      "component": "driver",
+      "initial-version": "0.1.0",
+      "version-file": "VERSION"
+    }
+  }
+}

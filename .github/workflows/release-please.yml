@@ -1,0 +1,126 @@
+name: release-please
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Draft release tag to rebuild, attach assets to and publish, such as driver-v0.1.0
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    outputs:
+      hardware-tag: ${{ (steps.release.outputs['hardware--release_created'] && steps.release.outputs['hardware--tag_name']) || (startsWith(inputs.tag, 'hardware-v') && inputs.tag) || '' }}
+      firmware-tag: ${{ (steps.release.outputs['firmware--release_created'] && steps.release.outputs['firmware--tag_name']) || (startsWith(inputs.tag, 'firmware-v') && inputs.tag) || '' }}
+      driver-tag: ${{ (steps.release.outputs['driver--release_created'] && steps.release.outputs['driver--tag_name']) || (startsWith(inputs.tag, 'driver-v') && inputs.tag) || '' }}
+    steps:
+      - uses: googleapis/release-please-action@v5
+        if: github.event_name == 'push'
+        id: release
+
+  hardware-pcb:
+    needs: release-please
+    if: needs.release-please.outputs.hardware-tag != ''
+    permissions:
+      contents: read
+      pull-requests: read
+    uses: ./.github/workflows/hardware.yml
+    with:
+      ref: refs/tags/${{ needs.release-please.outputs.hardware-tag }}
+
+  hardware-case:
+    needs: release-please
+    if: needs.release-please.outputs.hardware-tag != ''
+    permissions:
+      contents: read
+    uses: ./.github/workflows/case.yml
+    with:
+      ref: refs/tags/${{ needs.release-please.outputs.hardware-tag }}
+
+  hardware-release:
+    needs: [release-please, hardware-pcb, hardware-case]
+    runs-on: ubuntu-latest
+    concurrency:
+      group: publish-${{ needs.release-please.outputs.hardware-tag }}
+      cancel-in-progress: false
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: ${{ needs.release-please.outputs.hardware-tag }}
+      ASSETS: hdmi-cec-production hdmi-cec-panel-production hdmi-cec-step hdmi-cec-case-step hdmi-cec-case-stl fhs-cec-programming
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          pattern: "{hdmi-cec-*,fhs-cec-programming}"
+      - name: Upload to release and publish
+        working-directory: artifacts
+        run: |
+          for name in $ASSETS; do
+            (cd "$name" && zip -qr "../$name-$TAG.zip" .)
+          done
+          gh release upload "$TAG" ./*.zip --repo "$GITHUB_REPOSITORY"
+          gh release edit "$TAG" --draft=false --repo "$GITHUB_REPOSITORY"
+
+  firmware-build:
+    needs: release-please
+    if: needs.release-please.outputs.firmware-tag != ''
+    permissions:
+      contents: read
+    uses: ./.github/workflows/firmware.yml
+    with:
+      ref: refs/tags/${{ needs.release-please.outputs.firmware-tag }}
+
+  firmware-release:
+    needs: [release-please, firmware-build]
+    runs-on: ubuntu-latest
+    concurrency:
+      group: publish-${{ needs.release-please.outputs.firmware-tag }}
+      cancel-in-progress: false
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: ${{ needs.release-please.outputs.firmware-tag }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: fhs-cec-firmware
+          path: artifacts
+      - name: Upload to release and publish
+        run: |
+          gh release upload "$TAG" artifacts/fhs-cec-firmware.hex artifacts/fhs-cec-firmware.bin --repo "$GITHUB_REPOSITORY"
+          gh release edit "$TAG" --draft=false --repo "$GITHUB_REPOSITORY"
+
+  driver-build:
+    needs: release-please
+    if: needs.release-please.outputs.driver-tag != ''
+    permissions:
+      contents: read
+    uses: ./.github/workflows/driver.yml
+    with:
+      ref: refs/tags/${{ needs.release-please.outputs.driver-tag }}
+
+  driver-release:
+    needs: [release-please, driver-build]
+    runs-on: ubuntu-latest
+    concurrency:
+      group: publish-${{ needs.release-please.outputs.driver-tag }}
+      cancel-in-progress: false
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: ${{ needs.release-please.outputs.driver-tag }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: fhs-cec-dkms
+          path: artifacts
+      - name: Upload to release and publish
+        run: |
+          gh release upload "$TAG" artifacts/fhs-cec-*.tar.gz --repo "$GITHUB_REPOSITORY"
+          gh release edit "$TAG" --draft=false --repo "$GITHUB_REPOSITORY"
