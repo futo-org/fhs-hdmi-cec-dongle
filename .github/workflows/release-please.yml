@@ -48,6 +48,9 @@ jobs:
   hardware-release:
     needs: [release-please, hardware-pcb, hardware-case]
     runs-on: ubuntu-latest
+    concurrency:
+      group: publish-${{ needs.release-please.outputs.hardware-tag }}
+      cancel-in-progress: false
     env:
       GH_TOKEN: ${{ github.token }}
       TAG: ${{ needs.release-please.outputs.hardware-tag }}
@@ -84,6 +87,9 @@ jobs:
   firmware-release:
     needs: [release-please, firmware-build]
     runs-on: ubuntu-latest
+    concurrency:
+      group: publish-${{ needs.release-please.outputs.firmware-tag }}
+      cancel-in-progress: false
     env:
       GH_TOKEN: ${{ github.token }}
       TAG: ${{ needs.release-please.outputs.firmware-tag }}
@@ -110,6 +116,9 @@ jobs:
   driver-release:
     needs: [release-please, driver-build]
     runs-on: ubuntu-latest
+    concurrency:
+      group: publish-${{ needs.release-please.outputs.driver-tag }}
+      cancel-in-progress: false
     env:
       GH_TOKEN: ${{ github.token }}
       TAG: ${{ needs.release-please.outputs.driver-tag }}
