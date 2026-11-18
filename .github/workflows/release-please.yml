@@ -25,16 +25,6 @@ jobs:
       - uses: googleapis/release-please-action@v5
         if: github.event_name == 'push'
         id: release
-      - name: Require a draft release
-        if: github.event_name == 'workflow_dispatch'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          TAG: ${{ inputs.tag }}
-        run: |
-          if [ "$(gh release view "$TAG" --json isDraft --jq .isDraft --repo "$GITHUB_REPOSITORY")" != "true" ]; then
-            echo "::error::$TAG is not a draft release; published assets are never replaced"
-            exit 1
-          fi
 
   hardware-pcb:
     needs: release-please
@@ -44,7 +34,7 @@ jobs:
       pull-requests: read
     uses: ./.github/workflows/hardware.yml
     with:
-      ref: ${{ needs.release-please.outputs.hardware-tag }}
+      ref: refs/tags/${{ needs.release-please.outputs.hardware-tag }}
 
   hardware-case:
     needs: release-please
@@ -53,7 +43,7 @@ jobs:
       contents: read
     uses: ./.github/workflows/case.yml
     with:
-      ref: ${{ needs.release-please.outputs.hardware-tag }}
+      ref: refs/tags/${{ needs.release-please.outputs.hardware-tag }}
 
   hardware-release:
     needs: [release-please, hardware-pcb, hardware-case]
@@ -61,20 +51,26 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
       TAG: ${{ needs.release-please.outputs.hardware-tag }}
+      ASSETS: hdmi-cec-production hdmi-cec-panel-production hdmi-cec-step hdmi-cec-case-step hdmi-cec-case-stl fhs-cec-programming
     steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: .github/scripts
       - uses: actions/download-artifact@v4
         with:
           path: artifacts
           pattern: "{hdmi-cec-*,fhs-cec-programming}"
-      - name: Upload to release and publish
+      - name: Zip assets
         working-directory: artifacts
         run: |
-          for dir in */; do
-            name="${dir%/}"
+          for name in $ASSETS; do
             (cd "$name" && zip -qr "../$name-$TAG.zip" .)
           done
-          gh release upload "$TAG" ./*.zip --clobber --repo "$GITHUB_REPOSITORY"
-          gh release edit "$TAG" --draft=false --repo "$GITHUB_REPOSITORY"
+      - name: Upload to release and publish
+        run: |
+          zips=()
+          for name in $ASSETS; do zips+=("artifacts/$name-$TAG.zip"); done
+          bash .github/scripts/publish-release.sh "$TAG" "${zips[@]}"
 
   firmware-build:
     needs: release-please
@@ -83,7 +79,7 @@ jobs:
       contents: read
     uses: ./.github/workflows/firmware.yml
     with:
-      ref: ${{ needs.release-please.outputs.firmware-tag }}
+      ref: refs/tags/${{ needs.release-please.outputs.firmware-tag }}
 
   firmware-release:
     needs: [release-please, firmware-build]
@@ -92,13 +88,15 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       TAG: ${{ needs.release-please.outputs.firmware-tag }}
     steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: .github/scripts
       - uses: actions/download-artifact@v4
         with:
           name: fhs-cec-firmware
+          path: artifacts
       - name: Upload to release and publish
-        run: |
-          gh release upload "$TAG" fhs-cec-firmware.hex fhs-cec-firmware.bin --clobber --repo "$GITHUB_REPOSITORY"
-          gh release edit "$TAG" --draft=false --repo "$GITHUB_REPOSITORY"
+        run: bash .github/scripts/publish-release.sh "$TAG" artifacts/fhs-cec-firmware.hex artifacts/fhs-cec-firmware.bin
 
   driver-build:
     needs: release-please
@@ -107,7 +105,7 @@ jobs:
       contents: read
     uses: ./.github/workflows/driver.yml
     with:
-      ref: ${{ needs.release-please.outputs.driver-tag }}
+      ref: refs/tags/${{ needs.release-please.outputs.driver-tag }}
 
   driver-release:
     needs: [release-please, driver-build]
@@ -116,10 +114,12 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       TAG: ${{ needs.release-please.outputs.driver-tag }}
     steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: .github/scripts
       - uses: actions/download-artifact@v4
         with:
           name: fhs-cec-dkms
+          path: artifacts
       - name: Upload to release and publish
-        run: |
-          gh release upload "$TAG" ./fhs-cec-*.tar.gz --clobber --repo "$GITHUB_REPOSITORY"
-          gh release edit "$TAG" --draft=false --repo "$GITHUB_REPOSITORY"
+        run: bash .github/scripts/publish-release.sh "$TAG" artifacts/fhs-cec-*.tar.gz
