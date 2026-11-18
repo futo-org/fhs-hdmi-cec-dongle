@@ -1,0 +1,100 @@
+name: release-please
+
+on:
+  push:
+    branches: [master]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    outputs:
+      hardware: ${{ steps.release.outputs['hardware--release_created'] }}
+      hardware-tag: ${{ steps.release.outputs['hardware--tag_name'] }}
+      firmware: ${{ steps.release.outputs['firmware--release_created'] }}
+      firmware-tag: ${{ steps.release.outputs['firmware--tag_name'] }}
+      driver: ${{ steps.release.outputs['driver--release_created'] }}
+      driver-tag: ${{ steps.release.outputs['driver--tag_name'] }}
+    steps:
+      - uses: googleapis/release-please-action@v5
+        id: release
+
+  hardware-pcb:
+    needs: release-please
+    if: needs.release-please.outputs.hardware == 'true'
+    permissions:
+      contents: read
+      pull-requests: read
+    uses: ./.github/workflows/hardware.yml
+    with:
+      release: true
+
+  hardware-case:
+    needs: release-please
+    if: needs.release-please.outputs.hardware == 'true'
+    permissions:
+      contents: read
+    uses: ./.github/workflows/case.yml
+
+  hardware-release:
+    needs: [release-please, hardware-pcb, hardware-case]
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: ${{ needs.release-please.outputs.hardware-tag }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          pattern: "{hdmi-cec-*,fhs-cec-programming}"
+      - name: Upload to release
+        working-directory: artifacts
+        run: |
+          for dir in */; do
+            name="${dir%/}"
+            (cd "$name" && zip -qr "../$name-$TAG.zip" .)
+          done
+          gh release upload "$TAG" *.zip --clobber --repo "$GITHUB_REPOSITORY"
+
+  firmware-build:
+    needs: release-please
+    if: needs.release-please.outputs.firmware == 'true'
+    permissions:
+      contents: read
+    uses: ./.github/workflows/firmware.yml
+
+  firmware-release:
+    needs: [release-please, firmware-build]
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: ${{ needs.release-please.outputs.firmware-tag }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: fhs-cec-firmware
+      - name: Upload to release
+        run: gh release upload "$TAG" fhs-cec-firmware.hex fhs-cec-firmware.bin --clobber --repo "$GITHUB_REPOSITORY"
+
+  driver-build:
+    needs: release-please
+    if: needs.release-please.outputs.driver == 'true'
+    permissions:
+      contents: read
+    uses: ./.github/workflows/driver.yml
+
+  driver-release:
+    needs: [release-please, driver-build]
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: ${{ needs.release-please.outputs.driver-tag }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: fhs-cec-dkms
+      - name: Upload to release
+        run: gh release upload "$TAG" fhs-cec-*.tar.gz --clobber --repo "$GITHUB_REPOSITORY"

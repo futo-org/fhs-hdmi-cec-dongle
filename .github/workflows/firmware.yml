@@ -1,0 +1,37 @@
+name: firmware
+
+on:
+  push:
+    paths: ["firmware/**", ".github/workflows/firmware.yml"]
+  pull_request:
+    paths: ["firmware/**", ".github/workflows/firmware.yml"]
+  workflow_call:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: firmware
+    env:
+      PRESET: Release
+      ELF: build/Release/fhs-hdmi-controller.elf
+      FIRMWARE: fhs-cec-firmware
+      OUT: ${{ github.workspace }}/firmware-out
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jdx/mise-action@v2
+        with:
+          working_directory: firmware
+          install_args: cmake ninja gcc-arm-none-eabi
+      - name: Build firmware
+        run: mise run build
+      - name: Package
+        run: |
+          mkdir -p "$OUT"
+          arm-none-eabi-objcopy -O ihex "$ELF" "$OUT/$FIRMWARE.hex"
+          arm-none-eabi-objcopy -O binary "$ELF" "$OUT/$FIRMWARE.bin"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fhs-cec-firmware
+          path: ${{ env.OUT }}/

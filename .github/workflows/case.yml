@@ -5,6 +5,7 @@ on:
     paths: ["hardware/case/**", ".github/workflows/case.yml"]
   pull_request:
     paths: ["hardware/case/**", ".github/workflows/case.yml"]
+  workflow_call:
 
 env:
   SOLIDCRAFT_VERSION: 0.40.1

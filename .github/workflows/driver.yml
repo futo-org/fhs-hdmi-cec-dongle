@@ -5,6 +5,7 @@ on:
     paths: ["driver/**", ".github/workflows/driver.yml"]
   pull_request:
     paths: ["driver/**", ".github/workflows/driver.yml"]
+  workflow_call:
 
 jobs:
   build:
