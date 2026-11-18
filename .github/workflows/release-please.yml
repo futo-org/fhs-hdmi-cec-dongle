@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Existing release tag to rebuild, attach assets to and publish, such as driver-v0.1.0
+        description: Draft release tag to rebuild, attach assets to and publish, such as driver-v0.1.0
         required: true
         type: string
 
@@ -25,6 +25,16 @@ jobs:
       - uses: googleapis/release-please-action@v5
         if: github.event_name == 'push'
         id: release
+      - name: Require a draft release
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          if [ "$(gh release view "$TAG" --json isDraft --jq .isDraft --repo "$GITHUB_REPOSITORY")" != "true" ]; then
+            echo "::error::$TAG is not a draft release; published assets are never replaced"
+            exit 1
+          fi
 
   hardware-pcb:
     needs: release-please
