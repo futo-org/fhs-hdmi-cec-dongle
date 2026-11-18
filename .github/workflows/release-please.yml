@@ -56,24 +56,18 @@ jobs:
       TAG: ${{ needs.release-please.outputs.hardware-tag }}
       ASSETS: hdmi-cec-production hdmi-cec-panel-production hdmi-cec-step hdmi-cec-case-step hdmi-cec-case-stl fhs-cec-programming
     steps:
-      - uses: actions/checkout@v4
-        with:
-          sparse-checkout: .github/scripts
       - uses: actions/download-artifact@v4
         with:
           path: artifacts
           pattern: "{hdmi-cec-*,fhs-cec-programming}"
-      - name: Zip assets
+      - name: Upload to release and publish
         working-directory: artifacts
         run: |
           for name in $ASSETS; do
             (cd "$name" && zip -qr "../$name-$TAG.zip" .)
           done
-      - name: Upload to release and publish
-        run: |
-          zips=()
-          for name in $ASSETS; do zips+=("artifacts/$name-$TAG.zip"); done
-          bash .github/scripts/publish-release.sh "$TAG" "${zips[@]}"
+          gh release upload "$TAG" ./*.zip --repo "$GITHUB_REPOSITORY"
+          gh release edit "$TAG" --draft=false --repo "$GITHUB_REPOSITORY"
 
   firmware-build:
     needs: release-please
@@ -94,15 +88,14 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       TAG: ${{ needs.release-please.outputs.firmware-tag }}
     steps:
-      - uses: actions/checkout@v4
-        with:
-          sparse-checkout: .github/scripts
       - uses: actions/download-artifact@v4
         with:
           name: fhs-cec-firmware
           path: artifacts
       - name: Upload to release and publish
-        run: bash .github/scripts/publish-release.sh "$TAG" artifacts/fhs-cec-firmware.hex artifacts/fhs-cec-firmware.bin
+        run: |
+          gh release upload "$TAG" artifacts/fhs-cec-firmware.hex artifacts/fhs-cec-firmware.bin --repo "$GITHUB_REPOSITORY"
+          gh release edit "$TAG" --draft=false --repo "$GITHUB_REPOSITORY"
 
   driver-build:
     needs: release-please
@@ -123,12 +116,11 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       TAG: ${{ needs.release-please.outputs.driver-tag }}
     steps:
-      - uses: actions/checkout@v4
-        with:
-          sparse-checkout: .github/scripts
       - uses: actions/download-artifact@v4
         with:
           name: fhs-cec-dkms
           path: artifacts
       - name: Upload to release and publish
-        run: bash .github/scripts/publish-release.sh "$TAG" artifacts/fhs-cec-*.tar.gz
+        run: |
+          gh release upload "$TAG" artifacts/fhs-cec-*.tar.gz --repo "$GITHUB_REPOSITORY"
+          gh release edit "$TAG" --draft=false --repo "$GITHUB_REPOSITORY"
