@@ -38,6 +38,7 @@ jobs:
           mkdir -p "$OUT"
           arm-none-eabi-objcopy -O ihex "$ELF" "$OUT/$FIRMWARE.hex"
           arm-none-eabi-objcopy -O binary "$ELF" "$OUT/$FIRMWARE.bin"
+          cp "$GITHUB_WORKSPACE/LICENSE" "$OUT/LICENSE"
       - uses: actions/upload-artifact@v4
         with:
           name: fhs-cec-firmware

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-2.0 OR MIT
+// SPDX-License-Identifier: GPL-2.0-only
 /*
  * FHS CEC dongle: an STM32 HDMI-CEC adapter on USB.
  */
@@ -647,5 +647,5 @@ module_usb_driver(fhs_cec_driver);
 
 MODULE_AUTHOR("FUTO");
 MODULE_DESCRIPTION("FHS USB HDMI-CEC adapter");
-MODULE_LICENSE("Dual MIT/GPL");
+MODULE_LICENSE("GPL");
 MODULE_VERSION(FHS_CEC_VERSION);

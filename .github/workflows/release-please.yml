@@ -94,7 +94,7 @@ jobs:
           path: artifacts
       - name: Upload to release and publish
         run: |
-          gh release upload "$TAG" artifacts/fhs-cec-firmware.hex artifacts/fhs-cec-firmware.bin --repo "$GITHUB_REPOSITORY"
+          gh release upload "$TAG" artifacts/fhs-cec-firmware.hex artifacts/fhs-cec-firmware.bin artifacts/LICENSE --repo "$GITHUB_REPOSITORY"
           gh release edit "$TAG" --draft=false --repo "$GITHUB_REPOSITORY"
 
   driver-build:

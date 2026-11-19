@@ -300,5 +300,5 @@ Found while researching, kept here so they aren't lost:
 ## Open questions
 
 1. DKMS distribution: release tarball only, or also packages (Fedora COPR / Ubuntu PPA / AUR)?
-2. License: driver and `fhs-cec-proto.h` are written as GPL-2.0 OR MIT (`MODULE_LICENSE("Dual MIT/GPL")`), pending FUTO legal.
+2. License: driver is GPL-2.0-only; `fhs-cec-proto.h` stays GPL-2.0 OR MIT so the Source First firmware can include it.
 

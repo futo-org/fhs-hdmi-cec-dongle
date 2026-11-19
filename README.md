@@ -21,3 +21,9 @@ The source repository for the FHS CEC Dongle. It gives Linux machines without CE
 Each release starts as a draft and is published once its assets are attached. If an asset job fails, run the release-please workflow by hand with the draft's tag to rebuild, attach and publish it. Delete any asset the failed run already attached first: uploads never replace an existing asset.
 
 The workflow opens release PRs with `GITHUB_TOKEN`, so **Allow GitHub Actions to create and approve pull requests** must be on under Settings → Actions → General.
+
+## License
+
+- Everything not listed below: [Source First License 1.1](LICENSE)
+- `driver/`: [GPL-2.0](driver/LICENSE), except `fhs-cec-proto.h` (GPL-2.0 OR MIT, shared with the firmware)
+- Third-party code (`firmware/Drivers/`, `firmware/ref/`): its own license
