@@ -1,3 +1,10 @@
+This repository is licensed under the Source First License 1.1 below, except
+for files and directories that carry their own license:
+
+- `driver/` is licensed under GPL-2.0, see `driver/LICENSE`.
+- Third-party code, such as `firmware/Drivers/` and `firmware/ref/`, keeps its
+  original license.
+
 # Source First License 1.1
 
 ## Acceptance

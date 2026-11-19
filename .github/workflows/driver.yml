@@ -76,6 +76,7 @@ jobs:
           KVER=$(ls /lib/modules | head -1)
           make dkms-tarball
           tar -xzf fhs-cec-$VERSION.tar.gz -C /usr/src
+          cmp LICENSE /usr/src/fhs-cec-$VERSION/LICENSE
           dkms add fhs-cec/$VERSION
           dkms build fhs-cec/$VERSION -k $KVER
           dkms status
