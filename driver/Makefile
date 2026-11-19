@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-2.0 OR MIT
+# SPDX-License-Identifier: GPL-2.0-only
 # Out-of-tree build. Kbuild reads ./Kbuild, not this file.
 
 KDIR ?= /lib/modules/$(shell uname -r)/build

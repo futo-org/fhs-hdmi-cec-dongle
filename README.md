@@ -25,4 +25,4 @@ The workflow opens release PRs with `GITHUB_TOKEN`, so **Allow GitHub Actions to
 ## License
 
 - Repository: [Source First License 1.1](LICENSE)
-- `driver/`: [GPL-2.0 OR MIT](driver/LICENSE)
+- `driver/`: [GPL-2.0](driver/LICENSE), except `fhs-cec-proto.h` (GPL-2.0 OR MIT, shared with the firmware)
